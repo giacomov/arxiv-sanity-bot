@@ -1,12 +1,21 @@
+import time
+
 import pandas as pd
 from datetime import datetime, timedelta
 
 from requests_html import AsyncHTMLSession
 
 from arxiv_sanity_bot.altmetric.scores import gather_scores
-from arxiv_sanity_bot.config import ABSTRACT_ALLOWED_CHARACTERS, ARXIV_SANITY_RENDERING_TIME, ARXIV_SANITY_MAX_PAGES, \
-    ARXIV_SANITY_CONCURRENT_DOWNLOADS, TIMEZONE
-from arxiv_sanity_bot.events import InfoEvent
+from arxiv_sanity_bot.config import (
+    ABSTRACT_ALLOWED_CHARACTERS,
+    ARXIV_SANITY_RENDERING_TIME,
+    ARXIV_SANITY_MAX_PAGES,
+    ARXIV_SANITY_CONCURRENT_DOWNLOADS,
+    TIMEZONE,
+    ARXIV_SANITY_N_TRIALS,
+    ARXIV_SANITY_SLEEP_TIME,
+)
+from arxiv_sanity_bot.events import InfoEvent, FatalErrorEvent
 
 
 def sanitize_text(text):
@@ -17,9 +26,7 @@ def sanitize_text(text):
     text = " ".join(text.split())
 
     # Remove extraneous characters
-    allowed_characters = set(
-        ABSTRACT_ALLOWED_CHARACTERS
-    )
+    allowed_characters = set(ABSTRACT_ALLOWED_CHARACTERS)
     text = "".join(char for char in text if char in allowed_characters)
 
     return text
@@ -32,12 +39,27 @@ def _extract_arxiv_number(title):
     return href.split("/")[-1]
 
 
-async def get_abstracts_from_page(async_session, url, sleep_seconds=ARXIV_SANITY_RENDERING_TIME):
+async def get_abstracts_from_page(
+    async_session, url, sleep_seconds=ARXIV_SANITY_RENDERING_TIME
+):
 
     InfoEvent(msg=f"Retrieving url {url}")
-    r = await async_session.get(url)
 
-    await r.html.arender(sleep=sleep_seconds)
+    for i in range(ARXIV_SANITY_N_TRIALS):
+        try:
+            r = await async_session.get(url)
+
+            await r.html.arender(sleep=sleep_seconds)
+        except Exception:
+            time.sleep(ARXIV_SANITY_SLEEP_TIME)
+            continue
+        else:
+            break
+    else:
+        FatalErrorEvent(
+            msg=f"Could not download page after {ARXIV_SANITY_N_TRIALS} trials",
+            context={"url": url},
+        )
 
     abstracts = r.html.find(".rel_abs")
     titles = r.html.find(".rel_title")
@@ -71,7 +93,11 @@ def bulk_download(urls):
     return sum(asession.run(*list_of_lambdas), [])
 
 
-def get_all_abstracts(max_pages=ARXIV_SANITY_MAX_PAGES, after=None, chunk_size=ARXIV_SANITY_CONCURRENT_DOWNLOADS):
+def get_all_abstracts(
+    max_pages=ARXIV_SANITY_MAX_PAGES,
+    after=None,
+    chunk_size=ARXIV_SANITY_CONCURRENT_DOWNLOADS,
+):
 
     if after is None:
         after = datetime.now(tz=TIMEZONE) - timedelta(hours=48)

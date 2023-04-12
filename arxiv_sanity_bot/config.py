@@ -34,7 +34,10 @@ ARXIV_SANITY_RENDERING_TIME = 5
 ARXIV_SANITY_MAX_PAGES = 10
 # How many pages to download concurrently from arxiv-sanity
 ARXIV_SANITY_CONCURRENT_DOWNLOADS = 5
-
+# How many times to retry in case of issues
+ARXIV_SANITY_N_TRIALS = 10
+# Seconds to wait if sending a download fails, before retrying
+ARXIV_SANITY_SLEEP_TIME = 60
 TIMEZONE = ZoneInfo("America/Los_Angeles")
 
 ABSTRACT_CACHE_FILE = "posted_abstracts.parquet"
