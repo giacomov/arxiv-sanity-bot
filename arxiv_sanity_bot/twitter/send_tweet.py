@@ -1,6 +1,6 @@
 import tweepy
 
-from arxiv_sanity_bot.events import InfoEvent
+from arxiv_sanity_bot.events import InfoEvent, FatalErrorEvent
 from arxiv_sanity_bot.twitter.auth import TwitterOAuth1
 
 
@@ -19,7 +19,14 @@ def send_tweet(tweet: str, auth: TwitterOAuth1) -> str:
         access_token_secret=auth.access_token_secret,
     )
 
-    response = client.create_tweet(text=tweet)
+    try:
+
+        response = client.create_tweet(text=tweet)
+
+    except tweepy.errors.BadRequest as e:
+        FatalErrorEvent(
+            msg="Could not send tweet", context={"exception": str(e), "tweet": tweet}
+        )
 
     InfoEvent(msg=f"Sent tweet {tweet}")
 
