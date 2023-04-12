@@ -4,6 +4,7 @@ on:
   pull_request:
     types: [ opened, synchronize, reopened ]
   workflow_dispatch:
+  push:
 
 jobs:
   run_arxiv_sanity_bot:
@@ -29,6 +30,7 @@ jobs:
         ci/run_tests.sh
 
     - name: Submit coverage
+      if: ${{ github.event_name == 'push' }}
       uses: paambaati/codeclimate-action@v3.2.0
       env:
         CC_TEST_REPORTER_ID: ${{ secrets.CodeClimate }}
