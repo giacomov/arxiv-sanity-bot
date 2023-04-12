@@ -8,6 +8,7 @@ on:
 jobs:
   run_arxiv_sanity_bot:
     runs-on: ubuntu-latest
+    environment: dev
 
     steps:
     - name: Check out repository
@@ -26,3 +27,11 @@ jobs:
     - name: Run tests
       run: |
         ci/run_tests.sh
+
+    - name: Submit coverage
+      uses: paambaati/codeclimate-action@v3.2.0
+      env:
+        CC_TEST_REPORTER_ID: ${{ secrets.CodeClimate }}
+      with:
+        coverageCommand: coverage xml
+        debug: true
