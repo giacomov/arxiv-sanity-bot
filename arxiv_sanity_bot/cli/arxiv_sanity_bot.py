@@ -4,6 +4,7 @@ import time
 
 import pandas as pd
 import pyshorteners
+import requests.exceptions
 
 from arxiv_sanity_bot.arxiv_sanity.abstracts import get_all_abstracts
 from arxiv_sanity_bot.config import (
@@ -13,7 +14,7 @@ from arxiv_sanity_bot.config import (
     TIMEZONE,
     ABSTRACT_CACHE_FILE,
 )
-from arxiv_sanity_bot.events import InfoEvent
+from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent
 from arxiv_sanity_bot.models.chatGPT import ChatGPT
 from arxiv_sanity_bot.twitter.auth import TwitterOAuth1
 from arxiv_sanity_bot.twitter.send_tweet import send_tweet
@@ -88,19 +89,31 @@ def _summarize_if_new(already_processed_df, row):
         # Yes, we already processed it. Skip it
         InfoEvent(
             f"Paper {row['arxiv']} was already processed in a previous run",
-            context={
-                "title": row['title'],
-                "score": row['score']
-            }
+            context={"title": row["title"], "score": row["score"]},
         )
         summary, short_url = None, None
     else:
         summary = chatGPT.summarize_abstract(row["abstract"])
 
         url = f"https://arxiv-sanity-lite.com/?rank=pid&pid={row['arxiv']}"
-        # Remove the 'http://' part which is useless and consumes characters
-        # for nothing
-        short_url = s.tinyurl.short(url).split("//")[-1]
+
+        for _ in range(10):
+            # Remove the 'http://' part which is useless and consumes characters
+            # for nothing
+            try:
+                short_url = s.tinyurl.short(url).split("//")[-1]
+            except requests.exceptions.Timeout as e:
+                RetryableErrorEvent(
+                    msg="Could not shorten URL", context={"url": url, "error": str(e)}
+                )
+                time.sleep(10)
+                continue
+            else:
+                break
+        else:
+            InfoEvent("Could not shorten URL. Dropping it from the tweet!")
+            short_url = ""
+
     return summary, short_url
 
 
