@@ -2,7 +2,7 @@ name: Run tests
 
 on:
   pull_request:
-    types: [ opened, synchronize, reopened, closed ]
+    types: [ opened, synchronize, reopened ]
   workflow_dispatch:
 
 jobs:
