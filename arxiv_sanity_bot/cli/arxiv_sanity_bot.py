@@ -49,36 +49,23 @@ def _summarize_top_abstracts(abstracts, n):
         else None
     )
 
-    s = pyshorteners.Shortener()
-    chatGPT = ChatGPT()
     summaries = []
     processed = []
     for i, row in abstracts.iloc[:n].iterrows():
 
-        if already_processed_df is not None:
-            # Check if we already processed this paper
-            if row["arxiv"] in already_processed_df.index:
-                # Yes, we already processed it. Skip it
-                InfoEvent(
-                    f"Paper {row['arxiv']} was already processed in a previous run",
-                    context={
-                        "title": row['title'],
-                        "score": row['score']
-                    }
-                )
-                continue
+        summary, short_url = _summarize_if_new(already_processed_df, row)
 
-        summary = chatGPT.summarize_abstract(row["abstract"])
+        if summary is not None:
+            summaries.append(f"{short_url} {summary}")
 
-        url = f"https://arxiv-sanity-lite.com/?rank=pid&pid={row['arxiv']}"
-        # Remove the 'http://' part which is useless and consumes characters
-        # for nothing
-        u = s.tinyurl.short(url).split("//")[-1]
+            processed.append(row)
 
-        summaries.append(f"{u} {summary}")
+    _save_to_cache(already_processed_df, processed)
 
-        processed.append(row)
+    return summaries
 
+
+def _save_to_cache(already_processed_df, processed):
     if len(processed) > 0:
 
         processed_df = pd.DataFrame(processed).set_index("arxiv")
@@ -88,7 +75,30 @@ def _summarize_top_abstracts(abstracts, n):
 
         processed_df.to_parquet(ABSTRACT_CACHE_FILE)
 
-    return summaries
+
+def _summarize_if_new(already_processed_df, row):
+
+    chatGPT = ChatGPT()
+    s = pyshorteners.Shortener()
+
+    if already_processed_df is not None and row["arxiv"] in already_processed_df.index:
+        # Yes, we already processed it. Skip it
+        InfoEvent(
+            f"Paper {row['arxiv']} was already processed in a previous run",
+            context={
+                "title": row['title'],
+                "score": row['score']
+            }
+        )
+        summary, short_url = None, None
+    else:
+        summary = chatGPT.summarize_abstract(row["abstract"])
+
+        url = f"https://arxiv-sanity-lite.com/?rank=pid&pid={row['arxiv']}"
+        # Remove the 'http://' part which is useless and consumes characters
+        # for nothing
+        short_url = s.tinyurl.short(url).split("//")[-1]
+    return summary, short_url
 
 
 def _gather_abstracts():
