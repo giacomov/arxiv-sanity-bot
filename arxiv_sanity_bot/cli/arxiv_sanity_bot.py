@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
+import time
 
 import pandas as pd
 import pyshorteners
@@ -35,7 +35,10 @@ def bot():
     # Send the tweets
     oauth = TwitterOAuth1()
     for s in summaries:
+
         send_tweet(s, auth=oauth)
+
+        time.sleep(1)
 
     InfoEvent(msg="Bot finishing")
 

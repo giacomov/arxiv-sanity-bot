@@ -1,6 +1,9 @@
+import time
+
 import tweepy
 
-from arxiv_sanity_bot.events import InfoEvent, FatalErrorEvent
+from arxiv_sanity_bot.config import TWITTER_N_TRIALS, TWITTER_SLEEP_TIME
+from arxiv_sanity_bot.events import InfoEvent, FatalErrorEvent, RetryableErrorEvent
 from arxiv_sanity_bot.twitter.auth import TwitterOAuth1
 
 
@@ -19,14 +22,29 @@ def send_tweet(tweet: str, auth: TwitterOAuth1) -> str:
         access_token_secret=auth.access_token_secret,
     )
 
-    try:
+    for i in range(TWITTER_N_TRIALS):
+        try:
 
-        response = client.create_tweet(text=tweet)
+            response = client.create_tweet(text=tweet)
 
-    except tweepy.errors.BadRequest as e:
-        FatalErrorEvent(
-            msg="Could not send tweet", context={"exception": str(e), "tweet": tweet}
-        )
+        except tweepy.errors.BadRequest as e:
+
+            if (i + 1) < TWITTER_N_TRIALS:
+                RetryableErrorEvent(
+                    msg=f"Could not send tweet. Retrying after {TWITTER_SLEEP_TIME} s",
+                    context={"exception": str(e), "tweet": tweet},
+                )
+                time.sleep(TWITTER_SLEEP_TIME)
+                continue
+            else:
+                FatalErrorEvent(
+                    msg=f"Could not send tweet after {TWITTER_N_TRIALS}",
+                    context={"exception": str(e), "tweet": tweet},
+                )
+
+        else:
+
+            break
 
     InfoEvent(msg=f"Sent tweet {tweet}")
 

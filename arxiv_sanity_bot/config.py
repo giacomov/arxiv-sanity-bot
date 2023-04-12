@@ -15,6 +15,10 @@ CHATGPT_N_TRIALS = 10
 # we remove https://
 URL_LENGTH = 20
 TWEET_TEXT_LENGTH = 280 - URL_LENGTH
+# How many times to try to send a tweet before failing
+TWITTER_N_TRIALS = 10
+# Seconds to wait if sending a tweet fails, before retrying
+TWITTER_SLEEP_TIME = 60
 
 # How many calls we can make in parallel for the Altmetric
 # API
