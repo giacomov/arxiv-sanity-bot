@@ -1,0 +1,36 @@
+[project]
+name = "arxiv_sanity_bot"
+version = "1.0.0"
+description = "A bot that reads papers from arxiv-sanity, summarizes them using ChatGPT and post them on Twitter"
+readme = "README.md"
+authors = [{"name" = "Giacomo Vianello"}]
+dependencies = [
+    "openai == 0.27.2",
+    "tweepy == 4.13.0",
+    "pyshorteners == 1.0.1",
+    "requests-html == 0.10.0",
+    "pyyaml == 6.0",
+    "pandas == 2.0.0",
+    "httpx == 0.24.0"
+    ]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "coverage",
+    "pytest-asyncio",
+    "pytest-cov"
+]
+
+#[options.entry_points]
+#console_scripts = [
+#    "arxiv-sanity-bot = arxiv_sanity_bot.cli.arxiv_sanity_bot:bot",
+#]
+
+[project.scripts]
+arxiv-sanity-bot = "arxiv_sanity_bot.cli.arxiv_sanity_bot:bot"
+
