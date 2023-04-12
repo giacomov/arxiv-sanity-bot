@@ -1,7 +1,7 @@
 # Summarize the top N papers
 from zoneinfo import ZoneInfo
 
-PAPERS_TO_SUMMARIZE = 1
+PAPERS_TO_SUMMARIZE = 10
 
 # This defines the time window to consider
 WINDOW_START = 48  # hours ago
