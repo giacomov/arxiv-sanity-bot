@@ -1,0 +1,28 @@
+name: Run Arxiv Sanity Bot
+
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+  workflow_dispatch:
+
+jobs:
+  run_arxiv_sanity_bot:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install .[test]
+
+    - name: Run tests
+      run: |
+        ci/run_tests.sh
