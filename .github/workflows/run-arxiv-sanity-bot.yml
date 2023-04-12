@@ -13,27 +13,24 @@ jobs:
 
     steps:
     - name: Check out repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
+        cache: 'pip'
+
+    - name: Cache parquet dataframe of processed abstracts
+      uses: actions/cache@v3
+      with:
+        path: |
+          posted_abstracts.parquet
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install .
-    
-    - name: Check if cache exists
-      uses: xSAVIKx/artifact-exists-action@v0
-      with:
-        name: posted_abstracts.parquet
-
-    - uses: actions/download-artifact@v3
-      if: steps.check_coverage_artifact.outputs.exists == 'true'
-      with:
-        name: posted_abstracts.parquet
 
     - name: Run Arxiv Sanity Bot
       env:
@@ -44,9 +41,3 @@ jobs:
         TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
       run: |
         arxiv-sanity-bot
-
-    - name: Upload cache
-      uses: actions/upload-artifact@v3
-      with:
-        name: posted_abstracts.parquet
-        path: posted_abstracts.parquet
