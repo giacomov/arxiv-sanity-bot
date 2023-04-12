@@ -32,3 +32,5 @@ ARXIV_SANITY_MAX_PAGES = 10
 ARXIV_SANITY_CONCURRENT_DOWNLOADS = 5
 
 TIMEZONE = ZoneInfo("America/Los_Angeles")
+
+ABSTRACT_CACHE_FILE = "posted_abstracts.parquet"
