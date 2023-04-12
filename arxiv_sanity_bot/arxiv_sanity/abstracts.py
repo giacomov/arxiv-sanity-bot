@@ -5,7 +5,7 @@ from requests_html import AsyncHTMLSession
 
 from arxiv_sanity_bot.altmetric.scores import gather_scores
 from arxiv_sanity_bot.config import ABSTRACT_ALLOWED_CHARACTERS, ARXIV_SANITY_RENDERING_TIME, ARXIV_SANITY_MAX_PAGES, \
-    ARXIV_SANITY_CONCURRENT_DOWNLOADS
+    ARXIV_SANITY_CONCURRENT_DOWNLOADS, TIMEZONE
 from arxiv_sanity_bot.events import InfoEvent
 
 
@@ -74,7 +74,7 @@ def bulk_download(urls):
 def get_all_abstracts(max_pages=ARXIV_SANITY_MAX_PAGES, after=None, chunk_size=ARXIV_SANITY_CONCURRENT_DOWNLOADS):
 
     if after is None:
-        after = datetime.now() - timedelta(hours=48)
+        after = datetime.now(tz=TIMEZONE) - timedelta(hours=48)
 
     abstracts = []
 

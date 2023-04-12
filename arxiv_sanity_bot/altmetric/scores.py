@@ -5,7 +5,7 @@ import httpx
 from datetime import datetime, tzinfo
 import asyncio
 
-from arxiv_sanity_bot.config import ALTMETRIC_CHUNK_SIZE
+from arxiv_sanity_bot.config import ALTMETRIC_CHUNK_SIZE, TIMEZONE
 
 
 async def _gather_one_score(arxiv_id: str) -> Dict:
@@ -24,7 +24,7 @@ async def _gather_one_score(arxiv_id: str) -> Dict:
 
         # Let's use the cumulative score
         score = js["history"]["at"]
-        pub_on = datetime.fromtimestamp(pub_on_unix, tz=ZoneInfo("America/Los_Angeles")).isoformat()
+        pub_on = datetime.fromtimestamp(pub_on_unix, tz=TIMEZONE).isoformat()
 
     else:
         # Probably not yet processed

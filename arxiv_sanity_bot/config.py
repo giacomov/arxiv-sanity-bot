@@ -1,4 +1,6 @@
 # Summarize the top N papers
+from zoneinfo import ZoneInfo
+
 PAPERS_TO_SUMMARIZE = 1
 
 # This defines the time window to consider
@@ -28,3 +30,5 @@ ARXIV_SANITY_RENDERING_TIME = 5
 ARXIV_SANITY_MAX_PAGES = 10
 # How many pages to download concurrently from arxiv-sanity
 ARXIV_SANITY_CONCURRENT_DOWNLOADS = 5
+
+TIMEZONE = ZoneInfo("America/Los_Angeles")

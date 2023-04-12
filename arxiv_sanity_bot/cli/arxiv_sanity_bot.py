@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
 import pandas as pd
 import pyshorteners
 
 from arxiv_sanity_bot.arxiv_sanity.abstracts import get_all_abstracts
-from arxiv_sanity_bot.config import PAPERS_TO_SUMMARIZE, WINDOW_START, WINDOW_STOP
+from arxiv_sanity_bot.config import PAPERS_TO_SUMMARIZE, WINDOW_START, WINDOW_STOP, TIMEZONE
 from arxiv_sanity_bot.events import InfoEvent
 from arxiv_sanity_bot.models.chatGPT import ChatGPT
 from arxiv_sanity_bot.twitter.auth import TwitterOAuth1
@@ -54,7 +56,7 @@ def _gather_abstracts():
 
     :return: a pandas dataframe with the papers ordered by score (best at the top)
     """
-    now = datetime.now()
+    now = datetime.now(tz=TIMEZONE)
     abstracts = get_all_abstracts(after=now - timedelta(hours=WINDOW_START))  # type: pd.DataFrame
 
     if abstracts.shape[0] == 0:

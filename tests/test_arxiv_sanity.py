@@ -1,4 +1,3 @@
-import pytest
 import pandas as pd
 from unittest import mock
 from datetime import datetime
@@ -9,6 +8,7 @@ from arxiv_sanity_bot.arxiv_sanity.abstracts import (
     bulk_download,
     get_all_abstracts,
 )
+from arxiv_sanity_bot.config import TIMEZONE
 
 
 def test_sanitize_text():
@@ -43,18 +43,19 @@ def test_bulk_download():
 
 
 def test_get_all_abstracts():
+
+    v = {
+        "arxiv": "2303.11177",
+        "title": "test abstract",
+        "abstract": "test abstract",
+        "score": 0,
+        "published_on": datetime.now(tz=TIMEZONE),
+    }
+
     with mock.patch(
         "arxiv_sanity_bot.arxiv_sanity.abstracts.bulk_download"
     ) as mock_bulk_download:
-        mock_bulk_download.return_value = [
-            {
-                "arxiv": "2303.11177",
-                "title": "test abstract",
-                "abstract": "test abstract",
-                "score": 0,
-                "published_on": datetime.now().strftime("%Y-%m-%d"),
-            }
-        ]
+        mock_bulk_download.return_value = [v]
 
         df = get_all_abstracts(max_pages=1, chunk_size=1)
 
@@ -66,17 +67,7 @@ def test_get_all_abstracts():
         assert "score" in df.columns
         assert "published_on" in df.columns
 
-        expected_df = pd.DataFrame(
-            [
-                {
-                    "arxiv": "2303.11177",
-                    "title": "test abstract",
-                    "abstract": "test abstract",
-                    "score": 0,
-                    "published_on": datetime.now().strftime("%Y-%m-%d"),
-                }
-            ]
-        )
+        expected_df = pd.DataFrame([v])
         expected_df["published_on"] = pd.to_datetime(expected_df["published_on"])
 
         pd.testing.assert_frame_equal(df, expected_df)
