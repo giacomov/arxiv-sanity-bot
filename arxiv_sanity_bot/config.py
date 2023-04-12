@@ -13,7 +13,7 @@ CHATGPT_N_TRIALS = 10
 
 # The url length depens on the url shortener used. For tinyurl is 18 if
 # we remove https://
-URL_LENGTH = 19  # 18 URL plus " "
+URL_LENGTH = 20
 TWEET_TEXT_LENGTH = 280 - URL_LENGTH
 
 # How many calls we can make in parallel for the Altmetric
