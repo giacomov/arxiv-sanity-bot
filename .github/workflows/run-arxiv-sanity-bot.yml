@@ -22,8 +22,8 @@ jobs:
 
     - name: Cache parquet dataframe of processed abstracts
       uses: actions/cache@v3
-      key: arxiv-sanity-bot-cache
       with:
+        key: arxiv-sanity-bot-cache
         path: |
           posted_abstracts.parquet
           ~/.cache/pip
