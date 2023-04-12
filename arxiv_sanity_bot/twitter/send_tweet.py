@@ -1,4 +1,6 @@
 import tweepy
+
+from arxiv_sanity_bot.events import InfoEvent
 from arxiv_sanity_bot.twitter.auth import TwitterOAuth1
 
 
@@ -18,6 +20,8 @@ def send_tweet(tweet: str, auth: TwitterOAuth1) -> str:
     )
 
     response = client.create_tweet(text=tweet)
+
+    InfoEvent(msg=f"Sent tweet {tweet}")
 
     tweet_url = f"https://twitter.com/user/status/{response.data['id']}"
 

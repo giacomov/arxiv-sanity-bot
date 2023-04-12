@@ -15,6 +15,16 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v2
 
+    - name: Check if cache exists
+      uses: xSAVIKx/artifact-exists-action@v0
+      with:
+        name: posted_abstracts.parquet
+
+    - uses: actions/download-artifact@v3
+      if: steps.check_coverage_artifact.outputs.exists == 'true'
+      with:
+        name: posted_abstracts.parquet
+
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
@@ -34,3 +44,9 @@ jobs:
         TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
       run: |
         arxiv-sanity-bot
+
+    - name: Upload cache
+      uses: actions/upload-artifact@v3
+      with:
+        name: posted_abstracts.parquet
+        path: posted_abstracts.parquet
