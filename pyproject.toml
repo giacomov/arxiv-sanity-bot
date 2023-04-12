@@ -20,7 +20,7 @@ build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
 test = [
-    "pytest",
+    "pytest==7.3.0",
     "coverage",
     "pytest-asyncio",
     "pytest-cov"

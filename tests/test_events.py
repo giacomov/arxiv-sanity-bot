@@ -11,7 +11,7 @@ def test_event_repr():
 
     with mock.patch("inspect.currentframe") as mock_currentframe:
         frame = mock.MagicMock()
-        frame.f_back.f_back.f_back.f_back = frame
+        frame.f_back.f_back.f_back.f_back.f_back = frame
         frame.f_code.co_filename = "test.py"
         frame.f_lineno = 42
         mock_currentframe.return_value = frame
