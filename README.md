@@ -1,4 +1,5 @@
-# arxiv-sanity-bot
+# <img src="https://user-images.githubusercontent.com/5917371/231673318-afd0253d-a31a-4265-a44d-5334ed872408.png" width="50"> arxiv-sanity-bot
+
 [![Run Arxiv Sanity Bot](https://github.com/giacomov/arxiv-sanity-bot/actions/workflows/run-arxiv-sanity-bot.yml/badge.svg)](https://github.com/giacomov/arxiv-sanity-bot/actions/workflows/run-arxiv-sanity-bot.yml)
 [![Maintainability](https://api.codeclimate.com/v1/badges/bf7a3c98c285aa95f935/maintainability)](https://codeclimate.com/github/giacomov/arxiv-sanity-bot/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/bf7a3c98c285aa95f935/test_coverage)](https://codeclimate.com/github/giacomov/arxiv-sanity-bot/test_coverage)
@@ -25,6 +26,7 @@ The code runs periodically as a [Github action](https://github.com/giacomov/arxi
 
 ### Notes
 
+* The icon for the bot was generated using Stable Diffusion
 * In order to accumulate enough signal for the Altmetric score, the bot considers only papers between 48 hours and 24 hours from the time the bot runs.
 * The bot avoids reposting the same paper multiple times by maintaining track of the posted tweets, exploiting the [cache action](https://github.com/marketplace/actions/cache).
 * An automation set up on [Zapier](https://zapier.com/) takes each tweet and reposts it on LinkedIN.
