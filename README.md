@@ -20,6 +20,8 @@ If you don't use Twitter, you can also find the same tweets posted on [LinkedIn]
 
 ## How it works
 
-The code runs periodically as a [Github action](https://github.com/giacomov/arxiv-sanity-bot/blob/main/.github/workflows/run-arxiv-sanity-bot.yml) (so it runs on free compute here on Github). It fetches the last few pages from [arxiv-sanity](https://arxiv-sanity-lite.com), parse all the papers contained there, then sends their arxiv numbers to Altmetrics to collect the Altmetric score. After putting everything in a pandas DataFrame, it sorts it by score, then sends the first results to ChatGPT for summarization using the OpenAI API. Each result is concatenated with a shortened version of its Arxiv-sanity link and then posted on Twitter.
+The code runs periodically as a [Github action](https://github.com/giacomov/arxiv-sanity-bot/blob/main/.github/workflows/run-arxiv-sanity-bot.yml) (so it runs on free compute here on Github). It fetches the last few pages from [arxiv-sanity](https://arxiv-sanity-lite.com), parses all the papers contained there extracting title, abstract and arxiv number, then sends the arxiv numbers to Altmetrics to collect the Altmetric score. After putting everything together in a pandas DataFrame, it sorts it by score, then sends the first results to ChatGPT for summarization using the OpenAI API. Each result is concatenated with a shortened version of its Arxiv-sanity link and then posted on Twitter.
+
+An automation set up on [Zapier](https://zapier.com/) takes each tweet and reposts it on LinkedIN.
 
 All parameters governing the functioning of the bot are contained in the [config.py](https://github.com/giacomov/arxiv-sanity-bot/blob/main/arxiv_sanity_bot/config.py) module.
