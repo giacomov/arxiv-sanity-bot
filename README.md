@@ -4,7 +4,7 @@
 [![Maintainability](https://api.codeclimate.com/v1/badges/bf7a3c98c285aa95f935/maintainability)](https://codeclimate.com/github/giacomov/arxiv-sanity-bot/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/bf7a3c98c285aa95f935/test_coverage)](https://codeclimate.com/github/giacomov/arxiv-sanity-bot/test_coverage)
 
-![Slide 2 (1)](https://user-images.githubusercontent.com/5917371/231667513-03886ce6-820a-4070-9609-fc914b88350b.jpeg)
+![Slide 2 (2)](https://user-images.githubusercontent.com/5917371/231674765-837d8fed-ac7e-4dc1-b484-477d1e5c1040.jpeg)
 
 This repository contains the code for `arxiv-sanity-bot`, a system that:
 
