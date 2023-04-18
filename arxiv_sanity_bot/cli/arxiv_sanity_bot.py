@@ -2,17 +2,19 @@ import os
 from datetime import datetime, timedelta
 import time
 
+import click
 import pandas as pd
 import pyshorteners
 import requests.exceptions
 
-from arxiv_sanity_bot.arxiv_sanity.abstracts import get_all_abstracts
+from arxiv_sanity_bot.arxiv_sanity import arxiv_sanity_abstracts
+from arxiv_sanity_bot.arxiv import arxiv_abstracts
 from arxiv_sanity_bot.config import (
     PAPERS_TO_SUMMARIZE,
     WINDOW_START,
     WINDOW_STOP,
     TIMEZONE,
-    ABSTRACT_CACHE_FILE,
+    ABSTRACT_CACHE_FILE, SOURCE,
 )
 from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent
 from arxiv_sanity_bot.models.chatGPT import ChatGPT
@@ -20,11 +22,20 @@ from arxiv_sanity_bot.twitter.auth import TwitterOAuth1
 from arxiv_sanity_bot.twitter.send_tweet import send_tweet
 
 
-def bot():
+_SOURCES = {
+    "arxiv-sanity": arxiv_sanity,
+    "arxiv": arxiv
+}
+
+
+@click.command()
+@click.option('--window_start', default=WINDOW_START, help='Window start', type=int)
+@click.option('--window_stop', default=WINDOW_STOP, help='Window stop', type=int)
+def bot(window_start, window_stop):
 
     InfoEvent(msg="Bot starting")
 
-    abstracts, start, end = _gather_abstracts()
+    abstracts, start, end = _gather_abstracts(window_start, window_stop)
 
     if abstracts.shape[0] == 0:
 
@@ -95,11 +106,10 @@ def _summarize_if_new(already_processed_df, row):
     else:
         summary = chatGPT.summarize_abstract(row["abstract"])
 
-        url = f"https://arxiv-sanity-lite.com/?rank=pid&pid={row['arxiv']}"
-
         for _ in range(10):
             # Remove the 'http://' part which is useless and consumes characters
             # for nothing
+            url = _SOURCES[SOURCE].get_url(row['arxiv'])
             try:
                 short_url = s.tinyurl.short(url).split("//")[-1]
             except requests.exceptions.Timeout as e:
@@ -109,6 +119,7 @@ def _summarize_if_new(already_processed_df, row):
                 time.sleep(10)
                 continue
             else:
+                InfoEvent(msg=f"Processed abstract for {url}")
                 break
         else:
             InfoEvent("Could not shorten URL. Dropping it from the tweet!")
@@ -117,24 +128,27 @@ def _summarize_if_new(already_processed_df, row):
     return summary, short_url
 
 
-def _gather_abstracts():
+def _gather_abstracts(window_start, window_stop):
     """
     Get all abstracts from arxiv-sanity from the last 48 hours
 
     :return: a pandas dataframe with the papers ordered by score (best at the top)
     """
+
+    get_all_abstracts = _SOURCES[SOURCE].get_all_abstracts
+
     now = datetime.now(tz=TIMEZONE)
     abstracts = get_all_abstracts(
-        after=now - timedelta(hours=WINDOW_START)
+        after=now - timedelta(hours=window_start)
     )  # type: pd.DataFrame
 
     if abstracts.shape[0] == 0:
-        return abstracts, now - timedelta(hours=WINDOW_START), now
+        return abstracts, now - timedelta(hours=window_start), now
 
     # Remove abstracts newer than 24 hours (as we need at least 24 hours to accumulate some
     # stats for altmetric)
-    start = now - timedelta(hours=WINDOW_START)
-    end = now - timedelta(hours=WINDOW_STOP)
+    start = now - timedelta(hours=window_start)
+    end = now - timedelta(hours=window_stop)
     abstracts.query(
         "published_on.between(@start, @end)",
         inplace=True,

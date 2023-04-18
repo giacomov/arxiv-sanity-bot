@@ -7,29 +7,15 @@ from requests_html import AsyncHTMLSession
 
 from arxiv_sanity_bot.altmetric.scores import gather_scores
 from arxiv_sanity_bot.config import (
-    ABSTRACT_ALLOWED_CHARACTERS,
     ARXIV_SANITY_RENDERING_TIME,
     ARXIV_SANITY_MAX_PAGES,
     ARXIV_SANITY_CONCURRENT_DOWNLOADS,
     TIMEZONE,
     ARXIV_SANITY_N_TRIALS,
-    ARXIV_SANITY_SLEEP_TIME,
+    ARXIV_SANITY_SLEEP_TIME, WINDOW_START,
 )
 from arxiv_sanity_bot.events import InfoEvent, FatalErrorEvent
-
-
-def sanitize_text(text):
-    # Remove new line characters
-    text = text.replace("\n", " ")
-
-    # Remove extra white spaces
-    text = " ".join(text.split())
-
-    # Remove extraneous characters
-    allowed_characters = set(ABSTRACT_ALLOWED_CHARACTERS)
-    text = "".join(char for char in text if char in allowed_characters)
-
-    return text
+from arxiv_sanity_bot.sanitize_text import sanitize_text
 
 
 def _extract_arxiv_number(title):
@@ -100,7 +86,7 @@ def get_all_abstracts(
 ):
 
     if after is None:
-        after = datetime.now(tz=TIMEZONE) - timedelta(hours=48)
+        after = datetime.now(tz=TIMEZONE) - timedelta(hours=WINDOW_START)
 
     abstracts = []
 
@@ -130,7 +116,11 @@ def get_all_abstracts(
 
     return (
         df[idx]
-        .reset_index(drop=True)
         .sort_values(by="score", ascending=False)
         .reset_index(drop=True)
     )
+
+
+def get_url(arxiv_id):
+
+    return f"https://arxiv-sanity-lite.com/?rank=pid&pid={arxiv_id}"

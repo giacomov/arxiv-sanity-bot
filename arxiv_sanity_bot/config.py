@@ -2,6 +2,20 @@
 from zoneinfo import ZoneInfo
 
 PAPERS_TO_SUMMARIZE = 10
+# Source for the abstracts
+# This should be either "arxiv" or "arxiv-sanity"
+SOURCE = "arxiv"
+
+# Arxiv settings
+ARXIV_QUERY = 'cat:cs.CV OR cat:cs.LG OR cat:cs.CL OR cat:cs.AI OR cat:cs.NE OR cat:cs.RO'
+# Delay between pages requested to the Arxiv API
+# It is suggested to use 3 seconds in the API terms of service
+ARXIV_DELAY = 3  # seconds
+# Number of times to retry a failed page fetch
+ARXIV_NUM_RETRIES = 50
+# Paging settings
+ARXIV_PAGE_SIZE = 100  # papers
+ARXIV_MAX_PAGES = 10
 
 # This defines the time window to consider
 WINDOW_START = 48  # hours ago
@@ -38,6 +52,8 @@ ARXIV_SANITY_CONCURRENT_DOWNLOADS = 5
 ARXIV_SANITY_N_TRIALS = 10
 # Seconds to wait if sending a download fails, before retrying
 ARXIV_SANITY_SLEEP_TIME = 60
+
+# The timezone to use for all time stamps
 TIMEZONE = ZoneInfo("America/Los_Angeles")
 
 ABSTRACT_CACHE_FILE = "posted_abstracts.parquet"

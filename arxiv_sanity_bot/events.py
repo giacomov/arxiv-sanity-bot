@@ -28,6 +28,10 @@ class _Event:
         calling_frame = frame.f_back.f_back.f_back.f_back.f_back
         d["caller"] = f"{calling_frame.f_code.co_filename}:{calling_frame.f_lineno}"
 
+        # Avoid printing a null context
+        if d.get("context") is None:
+            d.pop("context")
+
         return d
 
     def __repr__(self):

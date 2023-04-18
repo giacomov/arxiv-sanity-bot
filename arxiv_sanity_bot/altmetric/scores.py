@@ -1,11 +1,11 @@
 from typing import List, Dict
-from zoneinfo import ZoneInfo
 
 import httpx
-from datetime import datetime, tzinfo
+from datetime import datetime
 import asyncio
 
 from arxiv_sanity_bot.config import ALTMETRIC_CHUNK_SIZE, TIMEZONE
+from arxiv_sanity_bot.events import InfoEvent
 
 
 async def _gather_one_score(arxiv_id: str) -> Dict:
@@ -31,7 +31,7 @@ async def _gather_one_score(arxiv_id: str) -> Dict:
         score = -1
         pub_on = None
 
-    return {"score": score, "published_on": pub_on}
+    return {"arxiv": arxiv_id, "score": score, "published_on": pub_on}
 
 
 async def gather_scores(
@@ -46,6 +46,7 @@ async def gather_scores(
     """
     results = []
     for i in range(0, len(arxiv_ids), chunk_size):
+        InfoEvent(msg=f"Fetching from Altmetric the scores for papers {i} - {i+chunk_size}")
         chunk = arxiv_ids[i:i + chunk_size]
         chunk_results = await asyncio.gather(*[_gather_one_score(x) for x in chunk])
         results.extend(chunk_results)

@@ -25,6 +25,7 @@ async def test_gather_one_score():
         result = await _gather_one_score(arxiv_id)
 
     expected_result = {
+        "arxiv": "2106.12345",
         "score": sample_response["history"]["at"],
         "published_on": "2021-06-08T00:00:00-07:00",
     }
@@ -44,6 +45,7 @@ async def test_gather_one_score():
         result = await _gather_one_score(arxiv_id)
 
     expected_result = {
+        "arxiv": "2106.12345",
         "score": -1,
         "published_on": None,
     }

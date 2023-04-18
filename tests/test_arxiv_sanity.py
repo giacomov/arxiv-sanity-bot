@@ -1,13 +1,13 @@
 import pandas as pd
 from unittest import mock
 from datetime import datetime
-from arxiv_sanity_bot.arxiv_sanity.abstracts import (
-    sanitize_text,
+from arxiv_sanity_bot.arxiv_sanity.arxiv_sanity_abstracts import (
     _extract_arxiv_number,
     get_abstracts_from_page,
     bulk_download,
     get_all_abstracts,
 )
+from arxiv_sanity_bot.sanitize_text import sanitize_text
 from arxiv_sanity_bot.config import TIMEZONE
 
 
@@ -33,7 +33,7 @@ def test_extract_arxiv_number():
 
 def test_bulk_download():
     with mock.patch(
-        "arxiv_sanity_bot.arxiv_sanity.abstracts.AsyncHTMLSession"
+        "arxiv_sanity_bot.arxiv_sanity.arxiv_sanity_abstracts.AsyncHTMLSession"
     ) as mock_async_html_session:
         mock_async_html_session_instance = mock_async_html_session.return_value
         mock_async_html_session_instance.run.return_value = [[]]
@@ -53,7 +53,7 @@ def test_get_all_abstracts():
     }
 
     with mock.patch(
-        "arxiv_sanity_bot.arxiv_sanity.abstracts.bulk_download"
+        "arxiv_sanity_bot.arxiv_sanity.arxiv_sanity_abstracts.bulk_download"
     ) as mock_bulk_download:
         mock_bulk_download.return_value = [v]
 
