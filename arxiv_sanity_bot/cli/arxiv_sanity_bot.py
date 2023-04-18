@@ -23,8 +23,8 @@ from arxiv_sanity_bot.twitter.send_tweet import send_tweet
 
 
 _SOURCES = {
-    "arxiv-sanity": arxiv_sanity,
-    "arxiv": arxiv
+    "arxiv-sanity": arxiv_sanity_abstracts,
+    "arxiv": arxiv_abstracts
 }
 
 
