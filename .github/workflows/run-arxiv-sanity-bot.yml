@@ -8,11 +8,11 @@ on:
     inputs:
       window_start:
         description: "Start of the window in days. Ex. 48 means that the window starts 48 hours ago"
-        default: 48
+        default: "48"
         type: "string"
       window_stop:
         description: "Stop of the window in days. Ex. 24 means that the window stops 24 hours ago"
-        default: 24
+        default: "24"
         type: "string"
 
 jobs:
@@ -50,4 +50,4 @@ jobs:
         TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
         TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
       run: |
-        arxiv-sanity-bot --window_start ${{ inputs.window_start }} --window_stop ${{ inputs.window_stop }}
+        arxiv-sanity-bot --window_start ${{ inputs.window_start || '48'}} --window_stop ${{ inputs.window_stop | '24'}}
