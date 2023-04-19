@@ -1,11 +1,18 @@
+import time
 from typing import List, Dict
 
+import httpcore
 import httpx
 from datetime import datetime
 import asyncio
 
-from arxiv_sanity_bot.config import ALTMETRIC_CHUNK_SIZE, TIMEZONE
-from arxiv_sanity_bot.events import InfoEvent
+from arxiv_sanity_bot.config import (
+    ALTMETRIC_CHUNK_SIZE,
+    TIMEZONE,
+    ALTMETRIC_N_RETRIES,
+    ALTMETRIC_WAIT_TIME,
+)
+from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent
 
 
 async def _gather_one_score(arxiv_id: str) -> Dict:
@@ -13,10 +20,23 @@ async def _gather_one_score(arxiv_id: str) -> Dict:
     url = f"https://api.altmetric.com/v1/arxiv/{arxiv_id}"
 
     # We use verify=False to avoid the SSLWantReadError error
-    async with httpx.AsyncClient(verify=False) as client:
-        response = await client.get(url)
+    for _ in range(ALTMETRIC_N_RETRIES):
+        try:
+            async with httpx.AsyncClient(verify=False) as client:
+                response = await client.get(url)
+        except Exception as e:
+            RetryableErrorEvent(
+                msg=f"Error retrieving {arxiv_id} from altmetric",
+                context={"exception": str(e)},
+            )
+            time.sleep(ALTMETRIC_WAIT_TIME)
+            continue
+        else:
+            break
+    else:
+        response = None
 
-    if response.status_code == 200:
+    if response is not None and response.status_code == 200:
 
         js = response.json()
 
@@ -46,8 +66,10 @@ async def gather_scores(
     """
     results = []
     for i in range(0, len(arxiv_ids), chunk_size):
-        InfoEvent(msg=f"Fetching from Altmetric the scores for papers {i} - {i+chunk_size}")
-        chunk = arxiv_ids[i:i + chunk_size]
+        InfoEvent(
+            msg=f"Fetching from Altmetric the scores for papers {i} - {i+chunk_size}"
+        )
+        chunk = arxiv_ids[i : i + chunk_size]
         chunk_results = await asyncio.gather(*[_gather_one_score(x) for x in chunk])
         results.extend(chunk_results)
 
