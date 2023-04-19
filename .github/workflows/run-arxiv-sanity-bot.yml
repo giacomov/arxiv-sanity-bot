@@ -51,8 +51,8 @@ jobs:
         TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
       run: |
         if [ ${{ inputs.window_start }} != "" ]; then
-             arxiv-sanity-bot --window_start ${{ inputs.window_start }} --window_stop ${{ inputs.window_stop }}
-          else 
-              arxiv-sanity-bot
-          fi
+            arxiv-sanity-bot --window_start ${{ inputs.window_start }} --window_stop ${{ inputs.window_stop }}
+        else 
+            arxiv-sanity-bot
+        fi
        
