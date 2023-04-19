@@ -9,6 +9,7 @@ import requests.exceptions
 
 from arxiv_sanity_bot.arxiv_sanity import arxiv_sanity_abstracts
 from arxiv_sanity_bot.arxiv import arxiv_abstracts
+from arxiv_sanity_bot.arxiv.extract_image import extract_first_image
 from arxiv_sanity_bot.config import (
     PAPERS_TO_SUMMARIZE,
     WINDOW_START,
@@ -42,13 +43,13 @@ def bot(window_start, window_stop):
         InfoEvent(msg=f"No abstract in the time window {start} - {end}")
 
     # Summarize the top 10 papers
-    summaries = _summarize_top_abstracts(abstracts, n=PAPERS_TO_SUMMARIZE)
+    summaries, images = _summarize_top_abstracts(abstracts, n=PAPERS_TO_SUMMARIZE)
 
     # Send the tweets
     oauth = TwitterOAuth1()
-    for s in summaries:
+    for s, img in zip(summaries, images):
 
-        send_tweet(s, auth=oauth)
+        send_tweet(s, auth=oauth, img_path=img)
 
         time.sleep(1)
 
@@ -65,19 +66,20 @@ def _summarize_top_abstracts(abstracts, n):
     )
 
     summaries = []
+    images = []
     processed = []
     for i, row in abstracts.iloc[:n].iterrows():
 
-        summary, short_url = _summarize_if_new(already_processed_df, row)
+        summary, short_url, img_path = _summarize_if_new(already_processed_df, row)
 
         if summary is not None:
             summaries.append(f"{short_url} {summary}")
-
+            images.append(img_path)
             processed.append(row)
 
     _save_to_cache(already_processed_df, processed)
 
-    return summaries
+    return summaries, images
 
 
 def _save_to_cache(already_processed_df, processed):
@@ -102,7 +104,7 @@ def _summarize_if_new(already_processed_df, row):
             f"Paper {row['arxiv']} was already processed in a previous run",
             context={"title": row["title"], "score": row["score"]},
         )
-        summary, short_url = None, None
+        summary, short_url, img_path = None, None, None
     else:
         summary = chatGPT.summarize_abstract(row["abstract"])
 
@@ -125,7 +127,10 @@ def _summarize_if_new(already_processed_df, row):
             InfoEvent("Could not shorten URL. Dropping it from the tweet!")
             short_url = ""
 
-    return summary, short_url
+        # Get image from the first page
+        img_path = extract_first_image(row['arxiv'])
+
+    return summary, short_url, img_path
 
 
 def _gather_abstracts(window_start, window_stop):
