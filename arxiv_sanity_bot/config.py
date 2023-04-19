@@ -37,6 +37,8 @@ TWITTER_SLEEP_TIME = 60
 # How many calls we can make in parallel for the Altmetric
 # API
 ALTMETRIC_CHUNK_SIZE = 10
+ALTMETRIC_N_RETRIES = 100
+ALTMETRIC_WAIT_TIME = 10
 
 # Characters allowed in an abstract
 ABSTRACT_ALLOWED_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?'- "

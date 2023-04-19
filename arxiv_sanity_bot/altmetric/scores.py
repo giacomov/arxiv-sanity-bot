@@ -1,10 +1,12 @@
+import time
 from typing import List, Dict
 
+import httpcore
 import httpx
 from datetime import datetime
 import asyncio
 
-from arxiv_sanity_bot.config import ALTMETRIC_CHUNK_SIZE, TIMEZONE
+from arxiv_sanity_bot.config import ALTMETRIC_CHUNK_SIZE, TIMEZONE, ALTMETRIC_N_RETRIES, ALTMETRIC_WAIT_TIME
 from arxiv_sanity_bot.events import InfoEvent
 
 
@@ -13,8 +15,14 @@ async def _gather_one_score(arxiv_id: str) -> Dict:
     url = f"https://api.altmetric.com/v1/arxiv/{arxiv_id}"
 
     # We use verify=False to avoid the SSLWantReadError error
-    async with httpx.AsyncClient(verify=False) as client:
-        response = await client.get(url)
+    for _ in range(ALTMETRIC_N_RETRIES):
+        try:
+            async with httpx.AsyncClient(verify=False) as client:
+                response = await client.get(url)
+        except httpcore.ReadTimeout:
+            time.sleep(ALTMETRIC_WAIT_TIME)
+        else:
+            break
 
     if response.status_code == 200:
 
