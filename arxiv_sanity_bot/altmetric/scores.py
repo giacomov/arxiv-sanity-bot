@@ -19,8 +19,9 @@ async def _gather_one_score(arxiv_id: str) -> Dict:
         try:
             async with httpx.AsyncClient(verify=False) as client:
                 response = await client.get(url)
-        except httpcore.ReadTimeout:
+        except Exception:
             time.sleep(ALTMETRIC_WAIT_TIME)
+            continue
         else:
             break
 
