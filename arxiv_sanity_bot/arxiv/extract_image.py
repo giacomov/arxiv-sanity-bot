@@ -62,27 +62,32 @@ def extract_image(pdf_path, arxiv_id):
         pdf_reader = pypdf.PdfReader(pdf_file)
 
         # Find first  image
-        for page_number, page in enumerate(pdf_reader.pages):
+        filename, page_number = _search_first_image_in_pages(arxiv_id, pdf_reader)
 
-            # pypdf does not support non-rectangular images
-            # if one is found, we skip that page
-            try:
+    return filename, page_number
 
-                images = page.images
 
-            except pypdf.errors.PyPdfError:
+def _search_first_image_in_pages(arxiv_id, pdf_reader):
+    for page_number, page in enumerate(pdf_reader.pages):
 
-                continue
+        # pypdf does not support non-rectangular images
+        # if one is found, we skip that page
+        try:
 
-            if len(images) > 0:
-                filename = _save_first_image(arxiv_id, page)
+            images = page.images
 
-                break
-        else:
-            InfoEvent(f"No bitmap image found for {arxiv_id}")
-            filename = None
-            page_number = -1
+        except pypdf.errors.PyPdfError:
 
+            continue
+
+        if len(images) > 0:
+            filename = _save_first_image(arxiv_id, page)
+
+            break
+    else:
+        InfoEvent(f"No bitmap image found for {arxiv_id}")
+        filename = None
+        page_number = -1
     return filename, page_number
 
 
