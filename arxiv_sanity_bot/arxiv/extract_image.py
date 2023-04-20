@@ -48,28 +48,32 @@ def extract_first_image(arxiv_id: str):
 
 
 def _select_image_or_graph(graph_file, graph_page_number, image_file, image_page_number):
-    if image_file is not None and graph_file is not None:
-
+    def select_first_image():
         InfoEvent("Found both bitmap and graph images. Selecting the one that comes first")
-        # If they are on the same page, we pick
-        # the bitmap (which is usually nicer ;-) )
-        filename = image_file if image_page_number <= graph_page_number else graph_file
+        return image_file if image_page_number <= graph_page_number else graph_file
 
-    elif image_file is None and graph_file is not None:
+    def select_graph():
         InfoEvent("Only graph found. Selecting that")
+        return graph_file
 
-        filename = graph_file
-    elif image_file is not None and graph_file is None:
-
+    def select_image():
         InfoEvent("Only bitmap image found. Selecting that")
+        return image_file
 
-        filename = image_file
-    else:
-
+    def no_image_or_graph():
         InfoEvent("NO IMAGE NOR GRAPH FOUND")
+        return None
 
-        filename = None
-    return filename
+    # My logic
+    if image_file is not None and graph_file is not None:
+        return select_first_image()
+    if image_file is None and graph_file is not None:
+        return select_graph()
+    if image_file is not None and graph_file is None:
+        return select_image()
+
+    return no_image_or_graph()
+
 
 
 def extract_image(pdf_path, arxiv_id):
