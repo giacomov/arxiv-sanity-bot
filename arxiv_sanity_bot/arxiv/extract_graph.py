@@ -75,14 +75,25 @@ def _save_cutout(arxiv_id, new_rects, page):
 
 
 def _get_bounding_boxes(page):
+
     new_rects = []
+
     for p in page.get_drawings():
-        r = _enlarge_rect(p)
-        for i in range(len(new_rects)):
-            if abs(r & new_rects[i]) > 0:
-                new_rects[i] |= r
-                break
-        remainder = [s for s in new_rects if r in s]
+
+        r, remainder = _process_drawing(new_rects, p)
+
         if remainder == [] and _good_aspect_ratio(r):
             new_rects.append(r)
+
     return new_rects
+
+
+def _process_drawing(new_rects, p):
+    r = _enlarge_rect(p)
+    for i in range(len(new_rects)):
+
+        if abs(r & new_rects[i]) > 0:
+            new_rects[i] |= r
+            break
+    remainder = [s for s in new_rects if r in s]
+    return r, remainder
