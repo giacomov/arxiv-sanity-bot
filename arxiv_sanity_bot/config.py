@@ -1,7 +1,7 @@
 # Summarize the top N papers
 from zoneinfo import ZoneInfo
 
-PAPERS_TO_SUMMARIZE = 10
+PAPERS_TO_SUMMARIZE = 1
 # Source for the abstracts
 # This should be either "arxiv" or "arxiv-sanity"
 SOURCE = "arxiv"
@@ -24,6 +24,7 @@ WINDOW_STOP = 24  # hours ago
 # Number of times to try calling chatGPT before giving up
 # (if chatGPT returns summaries that are too long)
 CHATGPT_N_TRIALS = 10
+CHATGPT_SLEEP_TIME = 10
 
 # The url length depens on the url shortener used. For tinyurl is 18 if
 # we remove https://
