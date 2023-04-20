@@ -58,7 +58,7 @@ class ChatGPT(LLM):
 
         # Generate a fun variation of the following phrase using ChatGPT
         sentence = f"Hi! In this round I considered {n_papers_considered} papers and selected the " \
-                   f"top {n_papers_reported}"
+                   f"top {n_papers_reported}. One-sentence summaries in the thread."
 
         for i in range(CHATGPT_N_TRIALS):
             history = [

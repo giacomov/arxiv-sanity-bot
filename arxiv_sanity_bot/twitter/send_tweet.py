@@ -1,4 +1,5 @@
 import time
+from typing import Tuple
 import tweepy
 
 from arxiv_sanity_bot.config import TWITTER_N_TRIALS, TWITTER_SLEEP_TIME
@@ -30,13 +31,19 @@ def twitter_autoretry(functor, error_msg):
                 )
 
 
-def send_tweet(tweet: str, auth: TwitterOAuth1, img_path: str = None) -> str:
+def send_tweet(
+    tweet: str,
+    auth: TwitterOAuth1,
+    img_path: str = None,
+    in_reply_to_tweet_id: int = None,
+) -> Tuple[str, int]:
     """
     Send a tweet.
 
     :param tweet: tweet to send. Must respect twitter maximum length
     :param auth: an instance of a TwitterOAuth1 dataclass with credentials
     :param img_path: the path to an optional image to attach to the tweet
+    :param in_reply_to_tweet_id: the id of the tweet to reply to, if any.
     :return: the URL of the tweet
     """
 
@@ -52,7 +59,9 @@ def send_tweet(tweet: str, auth: TwitterOAuth1, img_path: str = None) -> str:
     media_ids = []
     if img_path is not None:
 
-        upload = twitter_autoretry(lambda: api.media_upload(img_path), "Could not upload image")
+        upload = twitter_autoretry(
+            lambda: api.media_upload(img_path), "Could not upload image"
+        )
 
         InfoEvent(msg=f"Uploaded image {img_path} as media_id {upload.media_id_string}")
 
@@ -67,10 +76,15 @@ def send_tweet(tweet: str, auth: TwitterOAuth1, img_path: str = None) -> str:
 
     mids = media_ids if len(media_ids) > 0 else None
 
-    response = twitter_autoretry(lambda: client.create_tweet(text=tweet, media_ids=mids), "Could not send tweet")
+    response = twitter_autoretry(
+        lambda: client.create_tweet(
+            text=tweet, media_ids=mids, in_reply_to_tweet_id=in_reply_to_tweet_id
+        ),
+        "Could not send tweet",
+    )
 
     InfoEvent(msg=f"Sent tweet {tweet}")
 
     tweet_url = f"https://twitter.com/user/status/{response.data['id']}"
 
-    return tweet_url
+    return tweet_url, response.data['id']
