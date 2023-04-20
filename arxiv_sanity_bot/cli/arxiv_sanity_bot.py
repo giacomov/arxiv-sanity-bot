@@ -49,17 +49,17 @@ def bot(window_start, window_stop):
     # Send the tweets
     oauth = TwitterOAuth1()
 
-    for s, img in zip(summaries, images):
-
-        send_tweet(s, auth=oauth, img_path=img)
-
-        time.sleep(1)
-
     # First send summary tweet
     if len(summaries) > 0:
         InfoEvent("Sending summary tweet")
         summary_tweet = ChatGPT().generate_bot_summary(abstracts.shape[0], len(summaries))
-        send_tweet(summary_tweet, auth=oauth)
+        url, tweet_id = send_tweet(summary_tweet, auth=oauth)
+
+        for s, img in zip(summaries, images):
+
+            send_tweet(s, auth=oauth, img_path=img,  in_reply_to_tweet_id=tweet_id)
+
+            time.sleep(1)
 
     InfoEvent(msg="Bot finishing")
 
