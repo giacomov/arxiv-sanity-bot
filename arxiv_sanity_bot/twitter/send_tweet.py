@@ -1,6 +1,5 @@
 import time
 from typing import Tuple
-
 import tweepy
 
 from arxiv_sanity_bot.config import TWITTER_N_TRIALS, TWITTER_SLEEP_TIME
