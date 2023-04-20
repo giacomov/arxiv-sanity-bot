@@ -68,6 +68,10 @@ def extract_image(pdf_path, arxiv_id):
 
 
 def _search_first_image_in_pages(arxiv_id, pdf_reader):
+
+    filename = None
+    page_number = -1
+
     for page_number, page in enumerate(pdf_reader.pages):
 
         # pypdf does not support non-rectangular images
@@ -84,10 +88,7 @@ def _search_first_image_in_pages(arxiv_id, pdf_reader):
             filename = _save_first_image(arxiv_id, page)
 
             break
-    else:
-        InfoEvent(f"No bitmap image found for {arxiv_id}")
-        filename = None
-        page_number = -1
+
     return filename, page_number
 
 
