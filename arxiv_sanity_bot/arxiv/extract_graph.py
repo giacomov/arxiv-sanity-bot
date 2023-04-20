@@ -23,18 +23,21 @@ def _union_all_rectangles(new_rects):
     return fitz.fitz.Rect(x0, y0, x1, y1)
 
 
-def _remove_overlaps(new_rects):
-    remove = []
-    for j in range(len(new_rects)):
-        for i in range(len(new_rects)):
-            if new_rects[j] in new_rects[i] and i != j:
-                remove.append(j)
-    remove = list(set(remove))
-    for i in reversed(remove):
-        try:
-            del new_rects[i]
-        except IndexError:
-            continue
+# def _remove_overlaps(new_rects):
+#
+#     remove = set()
+#     for j in range(len(new_rects)):
+#         for i in range(len(new_rects)):
+#             if new_rects[j] in new_rects[i] and i != j:
+#                 remove.add(j)
+#
+#     remove = list(remove)
+#
+#     for i in reversed(remove):
+#         try:
+#             del new_rects[i]
+#         except IndexError:
+#             continue
 
 
 def extract_graph(pdf_path, arxiv_id):
@@ -52,13 +55,13 @@ def extract_graph(pdf_path, arxiv_id):
             if remainder == [] and _good_aspect_ratio(r):
                 new_rects.append(r)
 
-        new_rects = list(set(new_rects))
-        new_rects.sort(key=lambda r: abs(r), reverse=True)
-        _remove_overlaps(new_rects)
-        new_rects.sort(key=lambda r: (r.tl.y, r.tl.x))
-
-        if len(new_rects) == 0:
-            continue
+        # new_rects = list(set(new_rects))
+        # new_rects.sort(key=lambda r: abs(r), reverse=True)
+        # _remove_overlaps(new_rects)
+        # new_rects.sort(key=lambda r: (r.tl.y, r.tl.x))
+        #
+        # if len(new_rects) == 0:
+        #     continue
 
         all_r = _union_all_rectangles(new_rects)
         mat = fitz.Matrix(3, 3)
