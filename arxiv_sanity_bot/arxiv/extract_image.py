@@ -10,7 +10,16 @@ from arxiv_sanity_bot.config import ARXIV_NUM_RETRIES
 from arxiv_sanity_bot.events import InfoEvent
 
 
-def extract_first_image(arxiv_id):
+def extract_first_image(arxiv_id: str):
+    """
+    Extract the first image from the PDF.
+
+    If the PDF contains both an image and a graph, the first that is encountered is returned. If both the image and
+    the graph are on the same page, the image is returned.
+
+    :param arxiv_id: the arxiv ID
+    :return: the path to the first image as a local file, or None if none was found
+    """
 
     pdf_path = download_paper(arxiv_id)
 
@@ -24,6 +33,21 @@ def extract_first_image(arxiv_id):
     graph_file, graph_page_number = extract_graph(pdf_path, arxiv_id)
 
     # We select whichever comes first.
+    filename = _select_image_or_graph(graph_file, graph_page_number, image_file, image_page_number)
+
+    if filename is not None:
+        ext = os.path.splitext(filename)[-1]
+        new_filename = f"{arxiv_id}_image1{ext}"
+        shutil.copy(filename, new_filename)
+
+        return new_filename
+
+    else:
+
+        return None
+
+
+def _select_image_or_graph(graph_file, graph_page_number, image_file, image_page_number):
     if image_file is not None and graph_file is not None:
 
         InfoEvent("Found both bitmap and graph images. Selecting the one that comes first")
@@ -45,17 +69,7 @@ def extract_first_image(arxiv_id):
         InfoEvent("NO IMAGE NOR GRAPH FOUND")
 
         filename = None
-
-    if filename is not None:
-        ext = os.path.splitext(filename)[-1]
-        new_filename = f"{arxiv_id}_image1{ext}"
-        shutil.copy(filename, new_filename)
-
-        return new_filename
-
-    else:
-
-        return None
+    return filename
 
 
 def extract_image(pdf_path, arxiv_id):

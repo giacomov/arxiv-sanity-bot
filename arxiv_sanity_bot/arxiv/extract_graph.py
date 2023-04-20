@@ -9,7 +9,7 @@ def _enlarge_rect(p):
 
 
 def _good_aspect_ratio(r):
-    # area = (r.x1 - r.x0) * (r.y1 - r.y0)
+
     ratio = (r.width / (r.height + 1e-3))
     return not (ratio > 10 or ratio < 0.1)
 
@@ -23,23 +23,6 @@ def _union_all_rectangles(new_rects):
     return fitz.fitz.Rect(x0, y0, x1, y1)
 
 
-# def _remove_overlaps(new_rects):
-#
-#     remove = set()
-#     for j in range(len(new_rects)):
-#         for i in range(len(new_rects)):
-#             if new_rects[j] in new_rects[i] and i != j:
-#                 remove.add(j)
-#
-#     remove = list(remove)
-#
-#     for i in reversed(remove):
-#         try:
-#             del new_rects[i]
-#         except IndexError:
-#             continue
-
-
 def extract_graph(pdf_path, arxiv_id):
 
     doc = fitz.open(pdf_path)
@@ -48,13 +31,8 @@ def extract_graph(pdf_path, arxiv_id):
 
         new_rects = _get_bounding_boxes(page)
 
-        # new_rects = list(set(new_rects))
-        # new_rects.sort(key=lambda r: abs(r), reverse=True)
-        # _remove_overlaps(new_rects)
-        # new_rects.sort(key=lambda r: (r.tl.y, r.tl.x))
-        #
-        # if len(new_rects) == 0:
-        #     continue
+        if len(new_rects) == 0:
+            continue
 
         image_path = _save_cutout(arxiv_id, new_rects, page)
 

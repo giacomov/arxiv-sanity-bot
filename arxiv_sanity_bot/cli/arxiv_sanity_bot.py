@@ -58,7 +58,7 @@ def bot(window_start, window_stop):
     # First send summary tweet
     if len(summaries) > 0:
         InfoEvent("Sending summary tweet")
-        summary_tweet = ChatGPT().generate_bot_summary(abstracts.shape[0], PAPERS_TO_SUMMARIZE)
+        summary_tweet = ChatGPT().generate_bot_summary(abstracts.shape[0], len(summaries))
         send_tweet(summary_tweet, auth=oauth)
 
     InfoEvent(msg="Bot finishing")
