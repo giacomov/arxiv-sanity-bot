@@ -4,44 +4,36 @@ import pypdf
 import pypdf.errors
 import arxiv
 import os
-import fitz
 
+from arxiv_sanity_bot.arxiv.extract_graph import extract_graph
+from arxiv_sanity_bot.config import ARXIV_NUM_RETRIES
 from arxiv_sanity_bot.events import InfoEvent
 
 
-def extract_first_image(arxiv_id):
+def extract_first_image(arxiv_id: str):
+    """
+    Extract the first image from the PDF.
+
+    If the PDF contains both an image and a graph, the first that is encountered is returned. If both the image and
+    the graph are on the same page, the image is returned.
+
+    :param arxiv_id: the arxiv ID
+    :return: the path to the first image as a local file, or None if none was found
+    """
 
     pdf_path = download_paper(arxiv_id)
-    InfoEvent(f"Downloaded pdf for {arxiv_id}")
+
+    if pdf_path is None:
+        return None
 
     # Find first bitmap (if any)
-    image_file, image_page_number = _extract_image(pdf_path, arxiv_id)
+    image_file, image_page_number = extract_image(pdf_path, arxiv_id)
 
     # Find first graph (if any)
-    graph_file, graph_page_number = _extract_graph(pdf_path, arxiv_id)
+    graph_file, graph_page_number = extract_graph(pdf_path, arxiv_id)
 
     # We select whichever comes first.
-    if image_file is not None and graph_file is not None:
-
-        InfoEvent("Found both bitmap and graph images. Selecting the one that comes first")
-        # If they are on the same page, we pick
-        # the bitmap (which is usually nicer ;-) )
-        filename = image_file if image_page_number <= graph_page_number else graph_file
-
-    elif image_file is None and graph_file is not None:
-        InfoEvent("Only graph found. Selecting that")
-
-        filename = graph_file
-    elif image_file is not None and graph_file is None:
-
-        InfoEvent("Only bitmap image found. Selecting that")
-
-        filename = image_file
-    else:
-
-        InfoEvent("NO IMAGE NOR GRAPH FOUND")
-
-        filename = None
+    filename = _select_image_or_graph(graph_file, graph_page_number, image_file, image_page_number)
 
     if filename is not None:
         ext = os.path.splitext(filename)[-1]
@@ -55,120 +47,102 @@ def extract_first_image(arxiv_id):
         return None
 
 
-def _extract_image(pdf_path, arxiv_id):
+def select_first_image(graph_file, graph_page_number, image_file, image_page_number):
+    InfoEvent("Found both bitmap and graph images. Selecting the one that comes first")
+    return image_file if image_page_number <= graph_page_number else graph_file
+
+
+def select_graph(graph_file, graph_page_number, image_file, image_page_number):
+    InfoEvent("Only graph found. Selecting that")
+    return graph_file
+
+
+def select_image(graph_file, graph_page_number, image_file, image_page_number):
+    InfoEvent("Only bitmap image found. Selecting that")
+    return image_file
+
+
+def no_image_or_graph(graph_file, graph_page_number, image_file, image_page_number):
+    InfoEvent("NO IMAGE NOR GRAPH FOUND")
+    return None
+
+
+def _select_image_or_graph(graph_file, graph_page_number, image_file, image_page_number):
+
+    # My logic
+    if image_file is not None and graph_file is not None:
+        return select_first_image(graph_file, graph_page_number, image_file, image_page_number)
+    if image_file is None and graph_file is not None:
+        return select_graph(graph_file, graph_page_number, image_file, image_page_number)
+    if image_file is not None and graph_file is None:
+        return select_image(graph_file, graph_page_number, image_file, image_page_number)
+
+    return no_image_or_graph(graph_file, graph_page_number, image_file, image_page_number)
+
+
+def extract_image(pdf_path, arxiv_id):
     # Open the PDF file in binary mode
     with open(pdf_path, 'rb') as pdf_file:
         # Create a PDF reader object
         pdf_reader = pypdf.PdfReader(pdf_file)
 
         # Find first  image
-        for page_number, page in enumerate(pdf_reader.pages):
-
-            # pypdf does not support non-rectangular images
-            # if one is found, we skip that page
-            try:
-
-                images = page.images
-
-            except pypdf.errors.PyPdfError:
-
-                continue
-
-            if len(images) > 0:
-                first_image = page.images[0]
-                InfoEvent(f"Found first bitmap image for {arxiv_id}")
-
-                # Write the image data and caption text to files
-                extension = os.path.splitext(first_image.name)[-1]
-                filename = f'{arxiv_id}_first_image{extension}'
-                with open(filename, 'wb') as image_file:
-                    image_file.write(first_image.data)
-                InfoEvent(f"Bitmap image saved in {filename}")
-
-                break
-        else:
-            InfoEvent(f"No bitmap image found for {arxiv_id}")
-            filename = None
-            page_number = -1
+        filename, page_number = _search_first_image_in_pages(arxiv_id, pdf_reader)
 
     return filename, page_number
 
 
-def _extract_graph(pdf_path, arxiv_id):
+def _search_first_image_in_pages(arxiv_id, pdf_reader):
 
-    # This code is taken from
-    # https://github.com/pymupdf/PyMuPDF-Utilities/blob/master/examples/extract-vector-graphics/separate-figures.py
-    # with additional modifications
+    filename = None
+    page_number = -1
 
-    doc = fitz.open(pdf_path)
-    for page in doc:
+    for page_number, page in enumerate(pdf_reader.pages):
 
-        new_rects = []  # resulting rectangles
+        # pypdf does not support non-rectangular images
+        # if one is found, we skip that page
+        try:
 
-        for p in page.get_drawings():
-            w = p["width"]  # thickness of the border line
-            r = p["rect"] + (-w, -w, w, w)  # enlarge each rectangle by width value
-            for i in range(len(new_rects)):
-                if abs(r & new_rects[i]) > 0:  # touching one of the new rects?
-                    new_rects[i] |= r  # enlarge it
-                    break
-            # now look if contained in one of the new rects
-            remainder = [s for s in new_rects if r in s]
-            if remainder == []:  # no ==> add this rect to new rects
-                area = (r.x1 - r.x0) * (r.y1 - r.y0)
-                ratio = (r.width / (r.height + 1e-3))
-                # Ignore regions that are too small or too elongated
-                # (to cut out lines)
-                print(f"area: {area}, ratio: {ratio}")
-                if ratio > 10 or ratio < 0.1:
-                    continue
+            images = page.images
 
-                new_rects.append(r)
+        except pypdf.errors.PyPdfError:
 
-        new_rects = list(set(new_rects))  # remove any duplicates
-        new_rects.sort(key=lambda r: abs(r), reverse=True)
-        remove = []
-        for j in range(len(new_rects)):
-            for i in range(len(new_rects)):
-                if new_rects[j] in new_rects[i] and i != j:
-                    remove.append(j)
-        remove = list(set(remove))
-        for i in reversed(remove):
-            try:
-                del new_rects[i]
-            except IndexError:
-                continue
-        new_rects.sort(key=lambda r: (r.tl.y, r.tl.x))  # sort by location
-
-        if len(new_rects) == 0:
             continue
 
-        # Union all intersections
-        x0 = min([r.x0 for r in new_rects])
-        x1 = max([r.x1 for r in new_rects])
-        y0 = min([r.y0 for r in new_rects])
-        y1 = max([r.y1 for r in new_rects])
+        if len(images) > 0:
+            filename = _save_first_image(arxiv_id, page)
 
-        all_r = fitz.fitz.Rect(x0, y0, x1, y1)
+            break
 
-        mat = fitz.Matrix(3, 3)  # high resolution matrix
+    return filename, page_number
 
-        pix = page.get_pixmap(matrix=mat, clip=all_r)
-        image_path = f"graph-{arxiv_id}-page{page.number}.png"
 
-        pix.save(image_path)
+def _save_first_image(arxiv_id, page):
+    first_image = page.images[0]
+    InfoEvent(f"Found first bitmap image for {arxiv_id}")
+    # Write the image data and caption text to files
+    extension = os.path.splitext(first_image.name)[-1]
+    filename = f'{arxiv_id}_first_image{extension}'
+    with open(filename, 'wb') as image_file:
+        image_file.write(first_image.data)
+    InfoEvent(f"Bitmap image saved in {filename}")
+    return filename
 
-        InfoEvent(f"Found first graph for {arxiv_id}")
-
-        # We return the first graph we find
-        return image_path, page.number
-
-    # We end up here if there are no pages to loop over
-    InfoEvent(f"No graph found for {arxiv_id}")
-    return None, None
 
 def download_paper(arxiv_id):
     search = arxiv.Search(id_list=[arxiv_id])
     paper = next(search.results())
     InfoEvent(msg=f"Downloading paper {arxiv_id}")
-    return paper.download_pdf()
+
+    filename = None
+    for _ in range(ARXIV_NUM_RETRIES):
+
+        try:
+            filename = paper.download_pdf()
+        except Exception:
+            continue
+        else:
+            InfoEvent(f"Downloaded pdf for {arxiv_id}")
+            break
+
+    return filename
