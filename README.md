@@ -1,4 +1,4 @@
-# <img src="https://user-images.githubusercontent.com/5917371/231673318-afd0253d-a31a-4265-a44d-5334ed872408.png" width="50"> arxiv-sanity-bot
+# <img src="https://user-images.githubusercontent.com/5917371/233284505-6a443fd5-7c11-4568-9f94-5fd6201ecbd5.jpeg" width="50"> arxiv-sanity-bot
 
 [![Run Arxiv Sanity Bot](https://github.com/giacomov/arxiv-sanity-bot/actions/workflows/run-arxiv-sanity-bot.yml/badge.svg)](https://github.com/giacomov/arxiv-sanity-bot/actions/workflows/run-arxiv-sanity-bot.yml)
 [![Maintainability](https://api.codeclimate.com/v1/badges/bf7a3c98c285aa95f935/maintainability)](https://codeclimate.com/github/giacomov/arxiv-sanity-bot/maintainability)
