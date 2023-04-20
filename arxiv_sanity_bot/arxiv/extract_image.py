@@ -6,13 +6,16 @@ import arxiv
 import os
 
 from arxiv_sanity_bot.arxiv.extract_graph import extract_graph
+from arxiv_sanity_bot.config import ARXIV_NUM_RETRIES
 from arxiv_sanity_bot.events import InfoEvent
 
 
 def extract_first_image(arxiv_id):
 
     pdf_path = download_paper(arxiv_id)
-    InfoEvent(f"Downloaded pdf for {arxiv_id}")
+
+    if pdf_path is None:
+        return None
 
     # Find first bitmap (if any)
     image_file, image_page_number = extract_image(pdf_path, arxiv_id)
@@ -108,4 +111,16 @@ def download_paper(arxiv_id):
     search = arxiv.Search(id_list=[arxiv_id])
     paper = next(search.results())
     InfoEvent(msg=f"Downloading paper {arxiv_id}")
-    return paper.download_pdf()
+
+    filename = None
+    for _ in range(ARXIV_NUM_RETRIES):
+
+        try:
+            filename = paper.download_pdf()
+        except Exception:
+            continue
+        else:
+            InfoEvent(f"Downloaded pdf for {arxiv_id}")
+            break
+
+    return filename

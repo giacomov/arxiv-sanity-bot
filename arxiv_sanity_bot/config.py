@@ -1,7 +1,7 @@
 # Summarize the top N papers
 from zoneinfo import ZoneInfo
 
-PAPERS_TO_SUMMARIZE = 1
+PAPERS_TO_SUMMARIZE = 10
 # Source for the abstracts
 # This should be either "arxiv" or "arxiv-sanity"
 SOURCE = "arxiv"
