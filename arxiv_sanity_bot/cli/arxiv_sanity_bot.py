@@ -41,17 +41,24 @@ def bot(window_start, window_stop):
     if abstracts.shape[0] == 0:
 
         InfoEvent(msg=f"No abstract in the time window {start} - {end}")
+        return
 
     # Summarize the top 10 papers
     summaries, images = _summarize_top_abstracts(abstracts, n=PAPERS_TO_SUMMARIZE)
 
     # Send the tweets
     oauth = TwitterOAuth1()
+
     for s, img in zip(summaries, images):
 
         send_tweet(s, auth=oauth, img_path=img)
 
         time.sleep(1)
+
+    # First send summary tweet
+    InfoEvent("Sending summary tweet")
+    summary_tweet = ChatGPT().generate_bot_summary(abstracts.shape[0], PAPERS_TO_SUMMARIZE)
+    send_tweet(summary_tweet, auth=oauth)
 
     InfoEvent(msg="Bot finishing")
 

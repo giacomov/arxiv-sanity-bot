@@ -72,9 +72,11 @@ def send_tweet(tweet: str, auth: TwitterOAuth1, img_path: str = None) -> str:
         access_token_secret=auth.access_token_secret,
     )
 
+    mids = media_ids if len(media_ids) > 0 else None
+
     with twitter_autoretry("Could not send tweet"):
 
-        response = client.create_tweet(text=tweet, media_ids=media_ids)
+        response = client.create_tweet(text=tweet, media_ids=mids)
 
     InfoEvent(msg=f"Sent tweet {tweet}")
 

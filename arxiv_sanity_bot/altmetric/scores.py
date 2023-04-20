@@ -1,7 +1,6 @@
 import time
 from typing import List, Dict
 
-import httpcore
 import httpx
 from datetime import datetime
 import asyncio
