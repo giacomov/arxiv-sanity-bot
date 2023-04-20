@@ -41,19 +41,12 @@ def _union_all_rectangles(new_rects):
 
 
 def extract_graph(pdf_path, arxiv_id):
-    doc = fitz.open(pdf_path)
-    for page in doc:
-        new_rects = []
 
-        for p in page.get_drawings():
-            r = _enlarge_rect(p)
-            for i in range(len(new_rects)):
-                if abs(r & new_rects[i]) > 0:
-                    new_rects[i] |= r
-                    break
-            remainder = [s for s in new_rects if r in s]
-            if remainder == [] and _good_aspect_ratio(r):
-                new_rects.append(r)
+    doc = fitz.open(pdf_path)
+
+    for page in doc:
+
+        new_rects = _get_bounding_boxes(page)
 
         # new_rects = list(set(new_rects))
         # new_rects.sort(key=lambda r: abs(r), reverse=True)
@@ -63,14 +56,33 @@ def extract_graph(pdf_path, arxiv_id):
         # if len(new_rects) == 0:
         #     continue
 
-        all_r = _union_all_rectangles(new_rects)
-        mat = fitz.Matrix(3, 3)
-        pix = page.get_pixmap(matrix=mat, clip=all_r)
-        image_path = f"graph-{arxiv_id}-page{page.number}.png"
-        pix.save(image_path)
+        image_path = _save_cutout(arxiv_id, new_rects, page)
 
         InfoEvent(f"Found first graph for {arxiv_id}")
         return image_path, page.number
 
     InfoEvent(f"No graph found for {arxiv_id}")
     return None, None
+
+
+def _save_cutout(arxiv_id, new_rects, page):
+    all_r = _union_all_rectangles(new_rects)
+    mat = fitz.Matrix(3, 3)
+    pix = page.get_pixmap(matrix=mat, clip=all_r)
+    image_path = f"graph-{arxiv_id}-page{page.number}.png"
+    pix.save(image_path)
+    return image_path
+
+
+def _get_bounding_boxes(page):
+    new_rects = []
+    for p in page.get_drawings():
+        r = _enlarge_rect(p)
+        for i in range(len(new_rects)):
+            if abs(r & new_rects[i]) > 0:
+                new_rects[i] |= r
+                break
+        remainder = [s for s in new_rects if r in s]
+        if remainder == [] and _good_aspect_ratio(r):
+            new_rects.append(r)
+    return new_rects
