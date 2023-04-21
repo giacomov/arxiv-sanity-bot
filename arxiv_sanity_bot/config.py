@@ -7,7 +7,9 @@ PAPERS_TO_SUMMARIZE = 10
 SOURCE = "arxiv"
 
 # Arxiv settings
-ARXIV_QUERY = 'cat:cs.CV OR cat:cs.LG OR cat:cs.CL OR cat:cs.AI OR cat:cs.NE OR cat:cs.RO'
+ARXIV_QUERY = (
+    "cat:cs.CV OR cat:cs.LG OR cat:cs.CL OR cat:cs.AI OR cat:cs.NE OR cat:cs.RO"
+)
 # Delay between pages requested to the Arxiv API
 # It is suggested to use 3 seconds in the API terms of service
 ARXIV_DELAY = 3  # seconds
@@ -42,7 +44,9 @@ ALTMETRIC_N_RETRIES = 10
 ALTMETRIC_WAIT_TIME = 20
 
 # Characters allowed in an abstract
-ABSTRACT_ALLOWED_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?'- "
+ABSTRACT_ALLOWED_CHARACTERS = (
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?'- "
+)
 
 # Time to give to arxiv-sanity-lite to render the pages
 # before trying to fetch them (in seconds)

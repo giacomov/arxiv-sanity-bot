@@ -8,15 +8,11 @@ from arxiv_sanity_bot.twitter.auth import TwitterOAuth1
 
 
 def twitter_autoretry(functor, error_msg):
-
     for i in range(TWITTER_N_TRIALS):
-
         try:
-
             return functor()
 
         except tweepy.errors.TweepyException as e:
-
             if (i + 1) < TWITTER_N_TRIALS:
                 RetryableErrorEvent(
                     msg=f"{error_msg}. Retrying after {TWITTER_SLEEP_TIME} s",
@@ -58,7 +54,6 @@ def send_tweet(
 
     media_ids = []
     if img_path is not None:
-
         upload = twitter_autoretry(
             lambda: api.media_upload(img_path), "Could not upload image"
         )
@@ -87,4 +82,4 @@ def send_tweet(
 
     tweet_url = f"https://twitter.com/user/status/{response.data['id']}"
 
-    return tweet_url, response.data['id']
+    return tweet_url, response.data["id"]

@@ -1,7 +1,12 @@
 import pytest
 from unittest import mock
 from datetime import datetime
-from arxiv_sanity_bot.events import _Event, FatalErrorEvent, InfoEvent, RetryableErrorEvent
+from arxiv_sanity_bot.events import (
+    _Event,
+    FatalErrorEvent,
+    InfoEvent,
+    RetryableErrorEvent,
+)
 
 
 def test_event_repr():
@@ -22,18 +27,16 @@ def test_event_repr():
         expected_info = {
             "event": "TestEvent",
             "msg": "test message",
-            "context": {
-                "key": "value"
-            },
-            "caller": "test.py:42"
+            "context": {"key": "value"},
+            "caller": "test.py:42",
         }
         assert event_info == expected_info
 
 
 def test_fatal_error_event():
-    with mock.patch("arxiv_sanity_bot.events.logger.error") as mock_logger_error, \
-         mock.patch("sys.exit") as mock_sys_exit:
-
+    with mock.patch(
+        "arxiv_sanity_bot.events.logger.error"
+    ) as mock_logger_error, mock.patch("sys.exit") as mock_sys_exit:
         FatalErrorEvent(msg="fatal error", context={"error": "test"})
 
         mock_logger_error.assert_called_once()
@@ -52,4 +55,3 @@ def test_retryable_error_event():
         RetryableErrorEvent(msg="retryable error", context={"error": "test"})
 
         mock_logger_error.assert_called_once()
-

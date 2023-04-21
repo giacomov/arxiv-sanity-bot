@@ -43,7 +43,6 @@ def test_bulk_download():
 
 
 def test_get_all_abstracts():
-
     v = {
         "arxiv": "2303.11177",
         "title": "test abstract",

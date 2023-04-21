@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 
 def test_get_logging_level():
-
     from arxiv_sanity_bot import logger
 
     with patch.dict(os.environ, {"LOG_LEVEL": "INFO"}):
@@ -19,9 +18,7 @@ def test_get_logging_level():
 
 
 def test_logging_configuration():
-
     with patch.dict(os.environ, {"LOG_LEVEL": "DEBUG"}):
-
         from arxiv_sanity_bot import logger
 
         assert logger.logger.level == logger._get_logging_level()

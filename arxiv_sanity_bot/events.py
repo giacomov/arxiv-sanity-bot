@@ -12,7 +12,6 @@ from arxiv_sanity_bot.logger import logger
 
 @dataclasses.dataclass
 class _Event:
-
     msg: str
     context: Dict[Any, Any] = None
 
@@ -35,7 +34,6 @@ class _Event:
         return d
 
     def __repr__(self):
-
         return yaml.safe_dump({datetime.now(): self._to_dict()}, indent=4)
 
     @abc.abstractmethod
@@ -45,7 +43,6 @@ class _Event:
 
 @dataclasses.dataclass(repr=False)
 class FatalErrorEvent(_Event):
-
     def handle(self):
         # TODO: send an email
         logger.error(str(self))
@@ -54,13 +51,11 @@ class FatalErrorEvent(_Event):
 
 @dataclasses.dataclass(repr=False)
 class InfoEvent(_Event):
-
     def handle(self):
         logger.info(str(self))
 
 
 @dataclasses.dataclass(repr=False)
 class RetryableErrorEvent(_Event):
-
     def handle(self):
         logger.error(str(self))

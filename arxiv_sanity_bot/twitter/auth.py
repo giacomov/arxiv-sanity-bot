@@ -4,7 +4,6 @@ import os
 
 @dataclasses.dataclass
 class TwitterOAuth1:
-
     consumer_key: str = None
     consumer_secret: str = None
     access_token: str = None

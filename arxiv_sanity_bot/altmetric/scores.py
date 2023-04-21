@@ -15,7 +15,6 @@ from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent
 
 
 async def _gather_one_score(arxiv_id: str) -> Dict:
-
     url = f"https://api.altmetric.com/v1/arxiv/{arxiv_id}"
 
     # We use verify=False to avoid the SSLWantReadError error
@@ -36,7 +35,6 @@ async def _gather_one_score(arxiv_id: str) -> Dict:
         response = None
 
     if response is not None and response.status_code == 200:
-
         js = response.json()
 
         pub_on_unix = js["published_on"]

@@ -33,7 +33,9 @@ def extract_first_image(arxiv_id: str):
     graph_file, graph_page_number = extract_graph(pdf_path, arxiv_id)
 
     # We select whichever comes first.
-    filename = _select_image_or_graph(graph_file, graph_page_number, image_file, image_page_number)
+    filename = _select_image_or_graph(
+        graph_file, graph_page_number, image_file, image_page_number
+    )
 
     if filename is not None:
         ext = os.path.splitext(filename)[-1]
@@ -43,7 +45,6 @@ def extract_first_image(arxiv_id: str):
         return new_filename
 
     else:
-
         return None
 
 
@@ -67,22 +68,31 @@ def no_image_or_graph(graph_file, graph_page_number, image_file, image_page_numb
     return None
 
 
-def _select_image_or_graph(graph_file, graph_page_number, image_file, image_page_number):
-
+def _select_image_or_graph(
+    graph_file, graph_page_number, image_file, image_page_number
+):
     # My logic
     if image_file is not None and graph_file is not None:
-        return select_first_image(graph_file, graph_page_number, image_file, image_page_number)
+        return select_first_image(
+            graph_file, graph_page_number, image_file, image_page_number
+        )
     if image_file is None and graph_file is not None:
-        return select_graph(graph_file, graph_page_number, image_file, image_page_number)
+        return select_graph(
+            graph_file, graph_page_number, image_file, image_page_number
+        )
     if image_file is not None and graph_file is None:
-        return select_image(graph_file, graph_page_number, image_file, image_page_number)
+        return select_image(
+            graph_file, graph_page_number, image_file, image_page_number
+        )
 
-    return no_image_or_graph(graph_file, graph_page_number, image_file, image_page_number)
+    return no_image_or_graph(
+        graph_file, graph_page_number, image_file, image_page_number
+    )
 
 
 def extract_image(pdf_path, arxiv_id):
     # Open the PDF file in binary mode
-    with open(pdf_path, 'rb') as pdf_file:
+    with open(pdf_path, "rb") as pdf_file:
         # Create a PDF reader object
         pdf_reader = pypdf.PdfReader(pdf_file)
 
@@ -93,20 +103,16 @@ def extract_image(pdf_path, arxiv_id):
 
 
 def _search_first_image_in_pages(arxiv_id, pdf_reader):
-
     filename = None
     page_number = -1
 
     for page_number, page in enumerate(pdf_reader.pages):
-
         # pypdf does not support non-rectangular images
         # if one is found, we skip that page
         try:
-
             images = page.images
 
         except pypdf.errors.PyPdfError:
-
             continue
 
         if len(images) > 0:
@@ -122,8 +128,8 @@ def _save_first_image(arxiv_id, page):
     InfoEvent(f"Found first bitmap image for {arxiv_id}")
     # Write the image data and caption text to files
     extension = os.path.splitext(first_image.name)[-1]
-    filename = f'{arxiv_id}_first_image{extension}'
-    with open(filename, 'wb') as image_file:
+    filename = f"{arxiv_id}_first_image{extension}"
+    with open(filename, "wb") as image_file:
         image_file.write(first_image.data)
     InfoEvent(f"Bitmap image saved in {filename}")
     return filename
@@ -136,7 +142,6 @@ def download_paper(arxiv_id):
 
     filename = None
     for _ in range(ARXIV_NUM_RETRIES):
-
         try:
             filename = paper.download_pdf()
         except Exception:
