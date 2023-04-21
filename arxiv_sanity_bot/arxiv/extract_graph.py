@@ -9,8 +9,7 @@ def _enlarge_rect(p):
 
 
 def _good_aspect_ratio(r):
-
-    ratio = (r.width / (r.height + 1e-3))
+    ratio = r.width / (r.height + 1e-3)
     return not (ratio > 10 or ratio < 0.1)
 
 
@@ -24,11 +23,9 @@ def _union_all_rectangles(new_rects):
 
 
 def extract_graph(pdf_path, arxiv_id):
-
     doc = fitz.open(pdf_path)
 
     for page in doc:
-
         new_rects = _get_bounding_boxes(page)
 
         if len(new_rects) == 0:
@@ -53,11 +50,9 @@ def _save_cutout(arxiv_id, new_rects, page):
 
 
 def _get_bounding_boxes(page):
-
     new_rects = []
 
     for p in page.get_drawings():
-
         r, remainder = _process_drawing(new_rects, p)
 
         if remainder == [] and _good_aspect_ratio(r):
@@ -69,7 +64,6 @@ def _get_bounding_boxes(page):
 def _process_drawing(new_rects, p):
     r = _enlarge_rect(p)
     for i in range(len(new_rects)):
-
         if abs(r & new_rects[i]) > 0:
             new_rects[i] |= r
             break

@@ -7,7 +7,6 @@ async def get_link(async_session: AsyncHTMLSession, url):
 
 
 def bulk_download(urls):
-
     asession = AsyncHTMLSession()
 
     list_of_lambdas = [lambda url=url: get_link(asession, url) for url in urls]

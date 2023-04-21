@@ -18,7 +18,6 @@ def mock_arxiv_client():
 
 
 def test_extract_arxiv_id():
-
     assert _extract_arxiv_id("http://arxiv.org/abs/0000.00000") == "0000.00000"
     assert _extract_arxiv_id("http://arxiv.org/abs/0000.00000v1") == "0000.00000"
     assert _extract_arxiv_id("http://arxiv.org/abs/0000.00000v99") == "0000.00000"
@@ -53,15 +52,16 @@ def test_get_all_abstracts(mock_arxiv_client):
             ]
         )
 
-        abstracts = get_all_abstracts(max_pages=1, after=pd.to_datetime("2020-12-31T00:00:00Z"))
+        abstracts = get_all_abstracts(
+            max_pages=1, after=pd.to_datetime("2020-12-31T00:00:00Z")
+        )
 
     assert isinstance(abstracts, pd.DataFrame)
     assert len(abstracts) == 1
     assert abstracts.iloc[0]["arxiv"] == "2101.12345"
     assert abstracts.iloc[0]["title"] == "Sample Title"
     assert (
-        abstracts.iloc[0]["abstract"]
-        == "Sample abstract with some special characters."
+        abstracts.iloc[0]["abstract"] == "Sample abstract with some special characters."
     )
 
 

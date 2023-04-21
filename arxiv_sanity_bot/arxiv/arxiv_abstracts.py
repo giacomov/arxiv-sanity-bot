@@ -28,7 +28,6 @@ def get_all_abstracts(
     after=None,
     chunk_size=ARXIV_PAGE_SIZE,
 ) -> pd.DataFrame:
-
     if after is None:
         after = datetime.now(tz=TIMEZONE) - timedelta(hours=WINDOW_START)
 
@@ -61,7 +60,9 @@ def get_all_abstracts(
         )
 
         if result.published < after:
-            InfoEvent(msg=f"Breaking after {i+1} papers as published date was earlier than the window start")
+            InfoEvent(
+                msg=f"Breaking after {i+1} papers as published date was earlier than the window start"
+            )
             break
 
     abstracts = pd.DataFrame(rows)
@@ -88,5 +89,4 @@ def _fetch_scores(abstracts):
 
 
 def get_url(arxiv_id):
-
     return f"https://arxiv.org/abs/{arxiv_id}"

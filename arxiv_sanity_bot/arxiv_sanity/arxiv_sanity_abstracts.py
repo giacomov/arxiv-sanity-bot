@@ -12,7 +12,8 @@ from arxiv_sanity_bot.config import (
     ARXIV_SANITY_CONCURRENT_DOWNLOADS,
     TIMEZONE,
     ARXIV_SANITY_N_TRIALS,
-    ARXIV_SANITY_SLEEP_TIME, WINDOW_START,
+    ARXIV_SANITY_SLEEP_TIME,
+    WINDOW_START,
 )
 from arxiv_sanity_bot.events import InfoEvent, FatalErrorEvent
 from arxiv_sanity_bot.sanitize_text import sanitize_text
@@ -28,7 +29,6 @@ def _extract_arxiv_number(title):
 async def get_abstracts_from_page(
     async_session, url, sleep_seconds=ARXIV_SANITY_RENDERING_TIME
 ):
-
     InfoEvent(msg=f"Retrieving url {url}")
 
     for i in range(ARXIV_SANITY_N_TRIALS):
@@ -84,7 +84,6 @@ def get_all_abstracts(
     after=None,
     chunk_size=ARXIV_SANITY_CONCURRENT_DOWNLOADS,
 ):
-
     if after is None:
         after = datetime.now(tz=TIMEZONE) - timedelta(hours=WINDOW_START)
 
@@ -114,13 +113,8 @@ def get_all_abstracts(
     # Filter by time window
     idx = df["published_on"] > after
 
-    return (
-        df[idx]
-        .sort_values(by="score", ascending=False)
-        .reset_index(drop=True)
-    )
+    return df[idx].sort_values(by="score", ascending=False).reset_index(drop=True)
 
 
 def get_url(arxiv_id):
-
     return f"https://arxiv-sanity-lite.com/?rank=pid&pid={arxiv_id}"

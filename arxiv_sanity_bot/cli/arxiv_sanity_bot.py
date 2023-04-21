@@ -15,7 +15,8 @@ from arxiv_sanity_bot.config import (
     WINDOW_START,
     WINDOW_STOP,
     TIMEZONE,
-    ABSTRACT_CACHE_FILE, SOURCE,
+    ABSTRACT_CACHE_FILE,
+    SOURCE,
 )
 from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent
 from arxiv_sanity_bot.models.chatGPT import ChatGPT
@@ -23,23 +24,18 @@ from arxiv_sanity_bot.twitter.auth import TwitterOAuth1
 from arxiv_sanity_bot.twitter.send_tweet import send_tweet
 
 
-_SOURCES = {
-    "arxiv-sanity": arxiv_sanity_abstracts,
-    "arxiv": arxiv_abstracts
-}
+_SOURCES = {"arxiv-sanity": arxiv_sanity_abstracts, "arxiv": arxiv_abstracts}
 
 
 @click.command()
-@click.option('--window_start', default=WINDOW_START, help='Window start', type=int)
-@click.option('--window_stop', default=WINDOW_STOP, help='Window stop', type=int)
+@click.option("--window_start", default=WINDOW_START, help="Window start", type=int)
+@click.option("--window_stop", default=WINDOW_STOP, help="Window stop", type=int)
 def bot(window_start, window_stop):
-
     InfoEvent(msg="Bot starting")
 
     abstracts, start, end = _gather_abstracts(window_start, window_stop)
 
     if abstracts.shape[0] == 0:
-
         InfoEvent(msg=f"No abstract in the time window {start} - {end}")
         return
 
@@ -52,12 +48,15 @@ def bot(window_start, window_stop):
     # First send summary tweet
     if len(summaries) > 0:
         InfoEvent("Sending summary tweet")
-        summary_tweet = ChatGPT().generate_bot_summary(abstracts.shape[0], len(summaries))
+        summary_tweet = ChatGPT().generate_bot_summary(
+            abstracts.shape[0], len(summaries)
+        )
         url, tweet_id = send_tweet(summary_tweet, auth=oauth)
 
         for s, img in zip(summaries, images):
-
-            send_tweet(s, auth=oauth, img_path=img,  in_reply_to_tweet_id=tweet_id)
+            url, tweet_id = send_tweet(
+                s, auth=oauth, img_path=img, in_reply_to_tweet_id=tweet_id
+            )
 
             time.sleep(1)
 
@@ -65,7 +64,6 @@ def bot(window_start, window_stop):
 
 
 def _summarize_top_abstracts(abstracts, n):
-
     # This is indexed by arxiv number
     already_processed_df = (
         pd.read_parquet(ABSTRACT_CACHE_FILE)
@@ -77,7 +75,6 @@ def _summarize_top_abstracts(abstracts, n):
     images = []
     processed = []
     for i, row in abstracts.iloc[:n].iterrows():
-
         summary, short_url, img_path = _summarize_if_new(already_processed_df, row)
 
         if summary is not None:
@@ -92,7 +89,6 @@ def _summarize_top_abstracts(abstracts, n):
 
 def _save_to_cache(already_processed_df, processed):
     if len(processed) > 0:
-
         processed_df = pd.DataFrame(processed).set_index("arxiv")
 
         if already_processed_df is not None:
@@ -102,7 +98,6 @@ def _save_to_cache(already_processed_df, processed):
 
 
 def _summarize_if_new(already_processed_df, row):
-
     chatGPT = ChatGPT()
     s = pyshorteners.Shortener()
 
@@ -119,7 +114,7 @@ def _summarize_if_new(already_processed_df, row):
         for _ in range(10):
             # Remove the 'http://' part which is useless and consumes characters
             # for nothing
-            url = _SOURCES[SOURCE].get_url(row['arxiv'])
+            url = _SOURCES[SOURCE].get_url(row["arxiv"])
             try:
                 short_url = s.tinyurl.short(url).split("//")[-1]
             except requests.exceptions.Timeout as e:
@@ -136,7 +131,7 @@ def _summarize_if_new(already_processed_df, row):
             short_url = ""
 
         # Get image from the first page
-        img_path = extract_first_image(row['arxiv'])
+        img_path = extract_first_image(row["arxiv"])
 
     return summary, short_url, img_path
 
@@ -174,5 +169,4 @@ def _gather_abstracts(window_start, window_stop):
 
 
 if __name__ == "__main__":
-
     bot()
