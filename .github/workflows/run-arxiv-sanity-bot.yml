@@ -5,12 +5,12 @@ on:
     # Run with the following schedule, derived from here: https://info.arxiv.org/help/availability.html
     # and adding 1 hour and 15 min to: a) give 1 hour for the release to propagate + b) run at 15 past the hour
     # to avoid the crowded time at the hour (many cron jobs run at the hour):
-    # Monday at 01:15 am
-    # Tuesday at 01:15 am
-    # Wednesday at 01:15 am
-    # Thursday at 01:15 am
-    # Friday at 01:15 am
-    - cron: "15 1 * * 1-5"
+    # Monday at 01:15 am and 01:15 pm
+    # Tuesday at 01:15 am and 01:15 pm
+    # Wednesday at 01:15 am and 01:15 pm
+    # Thursday at 01:15 am and 01:15 pm
+    # Friday at 01:15 am and 01:15 pm
+    - cron: "15 1,13 * * 1-5"
   workflow_dispatch:
     inputs:
       window_start:
