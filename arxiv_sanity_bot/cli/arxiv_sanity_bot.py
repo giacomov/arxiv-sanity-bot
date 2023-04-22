@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta
 import time
-
+import random
 import click
 import pandas as pd
 import pyshorteners
@@ -53,12 +53,17 @@ def bot(window_start, window_stop):
         )
         url, tweet_id = send_tweet(summary_tweet, auth=oauth)
 
-        for s, img in zip(summaries, images):
-            url, tweet_id = send_tweet(
-                s, auth=oauth, img_path=img, in_reply_to_tweet_id=tweet_id
-            )
+        for s, img in zip(summaries[::-1], images[::-1]):
 
-            time.sleep(1)
+            # Introduce a random delay between the tweets to avoid triggering
+            # the twitter alarm
+            delay = random.randint(60, 120)
+            InfoEvent(msg=f"Waiting for {delay} seconds before sending next tweet")
+            time.sleep(delay)
+
+            send_tweet(
+                s, auth=oauth, img_path=img #, in_reply_to_tweet_id=tweet_id
+            )
 
     InfoEvent(msg="Bot finishing")
 
