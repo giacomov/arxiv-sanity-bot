@@ -57,7 +57,7 @@ def bot(window_start, window_stop):
 
             # Introduce a random delay between the tweets to avoid triggering
             # the twitter alarm
-            delay = random.randint(60, 120)
+            delay = random.randint(10, 30)
             InfoEvent(msg=f"Waiting for {delay} seconds before sending next tweet")
             time.sleep(delay)
 
