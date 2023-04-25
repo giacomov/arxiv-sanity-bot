@@ -1,7 +1,8 @@
 # Summarize the top N papers
 from zoneinfo import ZoneInfo
 
-PAPERS_TO_SUMMARIZE = 10
+# Papers under this score will not be posted
+SCORE_THRESHOLD = 20
 # Source for the abstracts
 # This should be either "arxiv" or "arxiv-sanity"
 SOURCE = "arxiv"
@@ -39,7 +40,7 @@ TWITTER_SLEEP_TIME = 60
 
 # How many calls we can make in parallel for the Altmetric
 # API
-ALTMETRIC_CHUNK_SIZE = 10
+ALTMETRIC_CHUNK_SIZE = 50
 ALTMETRIC_N_RETRIES = 10
 ALTMETRIC_WAIT_TIME = 20
 

@@ -11,12 +11,12 @@ from arxiv_sanity_bot.arxiv_sanity import arxiv_sanity_abstracts
 from arxiv_sanity_bot.arxiv import arxiv_abstracts
 from arxiv_sanity_bot.arxiv.extract_image import extract_first_image
 from arxiv_sanity_bot.config import (
-    PAPERS_TO_SUMMARIZE,
     WINDOW_START,
     WINDOW_STOP,
     TIMEZONE,
     ABSTRACT_CACHE_FILE,
     SOURCE,
+    SCORE_THRESHOLD,
 )
 from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent
 from arxiv_sanity_bot.models.chatGPT import ChatGPT
@@ -33,14 +33,13 @@ _SOURCES = {"arxiv-sanity": arxiv_sanity_abstracts, "arxiv": arxiv_abstracts}
 def bot(window_start, window_stop):
     InfoEvent(msg="Bot starting")
 
-    abstracts, start, end = _gather_abstracts(window_start, window_stop)
+    abstracts = _gather_abstracts(window_start, window_stop)
 
     if abstracts.shape[0] == 0:
-        InfoEvent(msg=f"No abstract in the time window {start} - {end}")
         return
 
-    # Summarize the top 10 papers
-    summaries, images = _summarize_top_abstracts(abstracts, n=PAPERS_TO_SUMMARIZE)
+    # Summarize the papers above the threshold
+    summaries, images = _summarize_top_abstracts(abstracts)
 
     # Send the tweets
     oauth = TwitterOAuth1()
@@ -56,19 +55,17 @@ def bot(window_start, window_stop):
         for s, img in zip(summaries[::-1], images[::-1]):
 
             # Introduce a random delay between the tweets to avoid triggering
-            # the twitter alarm
+            # the Twitter alarm
             delay = random.randint(10, 30)
             InfoEvent(msg=f"Waiting for {delay} seconds before sending next tweet")
             time.sleep(delay)
 
-            send_tweet(
-                s, auth=oauth, img_path=img #, in_reply_to_tweet_id=tweet_id
-            )
+            send_tweet(s, auth=oauth, img_path=img)  # , in_reply_to_tweet_id=tweet_id
 
     InfoEvent(msg="Bot finishing")
 
 
-def _summarize_top_abstracts(abstracts, n):
+def _summarize_top_abstracts(selected_abstracts):
     # This is indexed by arxiv number
     already_processed_df = (
         pd.read_parquet(ABSTRACT_CACHE_FILE)
@@ -79,7 +76,7 @@ def _summarize_top_abstracts(abstracts, n):
     summaries = []
     images = []
     processed = []
-    for i, row in abstracts.iloc[:n].iterrows():
+    for i, row in selected_abstracts.iterrows():
         summary, short_url, img_path = _summarize_if_new(already_processed_df, row)
 
         if summary is not None:
@@ -99,7 +96,7 @@ def _save_to_cache(already_processed_df, processed):
         if already_processed_df is not None:
             processed_df = pd.concat([already_processed_df, processed_df])
 
-        processed_df.to_parquet(ABSTRACT_CACHE_FILE)
+        processed_df[["title", "score", "published_on"]].to_parquet(ABSTRACT_CACHE_FILE)
 
 
 def _summarize_if_new(already_processed_df, row):
@@ -129,7 +126,10 @@ def _summarize_if_new(already_processed_df, row):
                 time.sleep(10)
                 continue
             else:
-                InfoEvent(msg=f"Processed abstract for {url}")
+                InfoEvent(
+                    msg=f"Processed abstract for {url}",
+                    context={"title": row["title"], "score": row["score"]},
+                )
                 break
         else:
             InfoEvent("Could not shorten URL. Dropping it from the tweet!")
@@ -143,7 +143,7 @@ def _summarize_if_new(already_processed_df, row):
 
 def _gather_abstracts(window_start, window_stop):
     """
-    Get all abstracts from arxiv-sanity from the last 48 hours
+    Get all abstracts from arxiv-sanity from the last 48 hours above the threshold
 
     :return: a pandas dataframe with the papers ordered by score (best at the top)
     """
@@ -154,9 +154,6 @@ def _gather_abstracts(window_start, window_stop):
     abstracts = get_all_abstracts(
         after=now - timedelta(hours=window_start)
     )  # type: pd.DataFrame
-
-    if abstracts.shape[0] == 0:
-        return abstracts, now - timedelta(hours=window_start), now
 
     # Remove abstracts newer than 24 hours (as we need at least 24 hours to accumulate some
     # stats for altmetric)
@@ -170,7 +167,28 @@ def _gather_abstracts(window_start, window_stop):
             "end": end,
         },
     )
-    return abstracts, start, end
+
+    print(abstracts.head())
+
+    # Threshold on score
+    idx = abstracts["score"] >= SCORE_THRESHOLD
+    abstracts = abstracts[idx].reset_index(drop=True)
+
+    if abstracts.shape[0] == 0:
+        InfoEvent(
+            msg=f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        )
+        return abstracts
+    else:
+        InfoEvent(
+            msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        )
+
+    if abstracts.shape[0] > 10:
+        InfoEvent(msg="Too many papers above threshold. Cutting to the top 10 papers")
+        abstracts = abstracts.iloc[:10]
+
+    return abstracts
 
 
 if __name__ == "__main__":
