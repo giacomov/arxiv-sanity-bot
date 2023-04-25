@@ -1,3 +1,4 @@
+import random
 import time
 from typing import List, Dict
 
@@ -69,6 +70,10 @@ async def gather_scores(
         chunk = arxiv_ids[i : i + chunk_size]
         chunk_results = await asyncio.gather(*[_gather_one_score(x) for x in chunk])
         results.extend(chunk_results)
+
+        delay = random.randint(1, 5)
+        InfoEvent(f"Waiting for {delay} seconds")
+        time.sleep(delay)
 
     assert len(results) == len(arxiv_ids)
 

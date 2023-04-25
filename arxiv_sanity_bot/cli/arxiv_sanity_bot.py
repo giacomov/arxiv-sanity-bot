@@ -11,12 +11,12 @@ from arxiv_sanity_bot.arxiv_sanity import arxiv_sanity_abstracts
 from arxiv_sanity_bot.arxiv import arxiv_abstracts
 from arxiv_sanity_bot.arxiv.extract_image import extract_first_image
 from arxiv_sanity_bot.config import (
-    PAPERS_TO_SUMMARIZE,
     WINDOW_START,
     WINDOW_STOP,
     TIMEZONE,
     ABSTRACT_CACHE_FILE,
     SOURCE,
+    SCORE_THRESHOLD,
 )
 from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent
 from arxiv_sanity_bot.models.chatGPT import ChatGPT
@@ -35,12 +35,24 @@ def bot(window_start, window_stop):
 
     abstracts, start, end = _gather_abstracts(window_start, window_stop)
 
-    if abstracts.shape[0] == 0:
-        InfoEvent(msg=f"No abstract in the time window {start} - {end}")
-        return
+    print(abstracts.head(10))
 
-    # Summarize the top 10 papers
-    summaries, images = _summarize_top_abstracts(abstracts, n=PAPERS_TO_SUMMARIZE)
+    # Threshold on score
+    idx = abstracts["score"] >= SCORE_THRESHOLD
+    abstracts = abstracts[idx].reset_index(drop=True)
+
+    if abstracts.shape[0] == 0:
+        InfoEvent(
+            msg=f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        )
+        return
+    else:
+        InfoEvent(
+            msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        )
+
+    # Summarize the papers above the threshold
+    summaries, images = _summarize_top_abstracts(abstracts)
 
     # Send the tweets
     oauth = TwitterOAuth1()
@@ -56,19 +68,17 @@ def bot(window_start, window_stop):
         for s, img in zip(summaries[::-1], images[::-1]):
 
             # Introduce a random delay between the tweets to avoid triggering
-            # the twitter alarm
+            # the Twitter alarm
             delay = random.randint(10, 30)
             InfoEvent(msg=f"Waiting for {delay} seconds before sending next tweet")
             time.sleep(delay)
 
-            send_tweet(
-                s, auth=oauth, img_path=img #, in_reply_to_tweet_id=tweet_id
-            )
+            send_tweet(s, auth=oauth, img_path=img)  # , in_reply_to_tweet_id=tweet_id
 
     InfoEvent(msg="Bot finishing")
 
 
-def _summarize_top_abstracts(abstracts, n):
+def _summarize_top_abstracts(selected_abstracts):
     # This is indexed by arxiv number
     already_processed_df = (
         pd.read_parquet(ABSTRACT_CACHE_FILE)
@@ -79,7 +89,7 @@ def _summarize_top_abstracts(abstracts, n):
     summaries = []
     images = []
     processed = []
-    for i, row in abstracts.iloc[:n].iterrows():
+    for i, row in selected_abstracts.iterrows():
         summary, short_url, img_path = _summarize_if_new(already_processed_df, row)
 
         if summary is not None:
@@ -99,7 +109,7 @@ def _save_to_cache(already_processed_df, processed):
         if already_processed_df is not None:
             processed_df = pd.concat([already_processed_df, processed_df])
 
-        processed_df.to_parquet(ABSTRACT_CACHE_FILE)
+        processed_df[["title", "score", "published_on"]].to_parquet(ABSTRACT_CACHE_FILE)
 
 
 def _summarize_if_new(already_processed_df, row):
@@ -129,7 +139,10 @@ def _summarize_if_new(already_processed_df, row):
                 time.sleep(10)
                 continue
             else:
-                InfoEvent(msg=f"Processed abstract for {url}")
+                InfoEvent(
+                    msg=f"Processed abstract for {url}",
+                    context={"title": row["title"], "score": row["score"]},
+                )
                 break
         else:
             InfoEvent("Could not shorten URL. Dropping it from the tweet!")
