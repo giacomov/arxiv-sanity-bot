@@ -51,6 +51,10 @@ def bot(window_start, window_stop):
             msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
         )
 
+    if abstracts.shape[0] > 10:
+        InfoEvent(msg="Too many papers above threshold. Cutting to the top 10 papers")
+        abstracts = abstracts.iloc[:10]
+
     # Summarize the papers above the threshold
     summaries, images = _summarize_top_abstracts(abstracts)
 
