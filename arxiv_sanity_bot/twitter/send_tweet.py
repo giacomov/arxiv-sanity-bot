@@ -21,8 +21,8 @@ def twitter_autoretry(functor, error_msg):
                 time.sleep(TWITTER_SLEEP_TIME)
                 continue
             else:
-                FatalErrorEvent(
-                    msg=f"{error_msg} after {TWITTER_N_TRIALS}",
+                InfoEvent(
+                    msg=f"{error_msg} after {TWITTER_N_TRIALS}. Giving up.",
                     context={"exception": str(e)},
                 )
 
