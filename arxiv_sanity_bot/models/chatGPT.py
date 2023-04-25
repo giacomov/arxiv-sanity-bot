@@ -54,8 +54,8 @@ class ChatGPT(LLM):
     def generate_bot_summary(self, n_papers_considered: int, n_papers_reported: int):
         # Generate a fun variation of the following phrase using ChatGPT
         sentence = (
-            f"Hi! In this round I considered {n_papers_considered} papers and selected the "
-            f"top {n_papers_reported}. One-sentence summaries in the thread."
+            f"Hi! In this round I considered {n_papers_considered} papers and selected "
+            f"{n_papers_reported} noteworthy ones. One-sentence summaries in the thread."
         )
 
         for i in range(CHATGPT_N_TRIALS):
