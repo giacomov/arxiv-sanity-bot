@@ -33,27 +33,10 @@ _SOURCES = {"arxiv-sanity": arxiv_sanity_abstracts, "arxiv": arxiv_abstracts}
 def bot(window_start, window_stop):
     InfoEvent(msg="Bot starting")
 
-    abstracts, start, end = _gather_abstracts(window_start, window_stop)
-
-    print(abstracts.head(10))
-
-    # Threshold on score
-    idx = abstracts["score"] >= SCORE_THRESHOLD
-    abstracts = abstracts[idx].reset_index(drop=True)
+    abstracts = _gather_abstracts(window_start, window_stop)
 
     if abstracts.shape[0] == 0:
-        InfoEvent(
-            msg=f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
-        )
         return
-    else:
-        InfoEvent(
-            msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
-        )
-
-    if abstracts.shape[0] > 10:
-        InfoEvent(msg="Too many papers above threshold. Cutting to the top 10 papers")
-        abstracts = abstracts.iloc[:10]
 
     # Summarize the papers above the threshold
     summaries, images = _summarize_top_abstracts(abstracts)
@@ -160,7 +143,7 @@ def _summarize_if_new(already_processed_df, row):
 
 def _gather_abstracts(window_start, window_stop):
     """
-    Get all abstracts from arxiv-sanity from the last 48 hours
+    Get all abstracts from arxiv-sanity from the last 48 hours above the threshold
 
     :return: a pandas dataframe with the papers ordered by score (best at the top)
     """
@@ -171,9 +154,6 @@ def _gather_abstracts(window_start, window_stop):
     abstracts = get_all_abstracts(
         after=now - timedelta(hours=window_start)
     )  # type: pd.DataFrame
-
-    if abstracts.shape[0] == 0:
-        return abstracts, now - timedelta(hours=window_start), now
 
     # Remove abstracts newer than 24 hours (as we need at least 24 hours to accumulate some
     # stats for altmetric)
@@ -187,7 +167,28 @@ def _gather_abstracts(window_start, window_stop):
             "end": end,
         },
     )
-    return abstracts, start, end
+
+    print(abstracts.head())
+
+    # Threshold on score
+    idx = abstracts["score"] >= SCORE_THRESHOLD
+    abstracts = abstracts[idx].reset_index(drop=True)
+
+    if abstracts.shape[0] == 0:
+        InfoEvent(
+            msg=f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        )
+        return abstracts
+    else:
+        InfoEvent(
+            msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        )
+
+    if abstracts.shape[0] > 10:
+        InfoEvent(msg="Too many papers above threshold. Cutting to the top 10 papers")
+        abstracts = abstracts.iloc[:10]
+
+    return abstracts
 
 
 if __name__ == "__main__":
