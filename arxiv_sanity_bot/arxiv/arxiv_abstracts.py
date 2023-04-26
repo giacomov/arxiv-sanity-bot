@@ -1,6 +1,5 @@
 import asyncio
 import re
-from datetime import datetime, timedelta
 
 import pandas as pd
 import arxiv
@@ -12,8 +11,6 @@ from arxiv_sanity_bot.config import (
     ARXIV_NUM_RETRIES,
     ARXIV_MAX_PAGES,
     ARXIV_PAGE_SIZE,
-    TIMEZONE,
-    WINDOW_START,
 )
 from arxiv_sanity_bot.events import InfoEvent
 from arxiv_sanity_bot.sanitize_text import sanitize_text
@@ -24,12 +21,11 @@ def _extract_arxiv_id(entry_id):
 
 
 def get_all_abstracts(
+    after,
+    before,
     max_pages=ARXIV_MAX_PAGES,
-    after=None,
     chunk_size=ARXIV_PAGE_SIZE,
 ) -> pd.DataFrame:
-    if after is None:
-        after = datetime.now(tz=TIMEZONE) - timedelta(hours=WINDOW_START)
 
     custom_client = arxiv.Client(
         page_size=chunk_size,
@@ -56,6 +52,7 @@ def get_all_abstracts(
                 "arxiv": _extract_arxiv_id(result.entry_id),
                 "title": result.title,
                 "abstract": sanitize_text(result.summary),
+                "published_on": result.published
             }
         )
 
@@ -67,19 +64,18 @@ def get_all_abstracts(
 
     abstracts = pd.DataFrame(rows)
 
+    # Filter on time
+    abstracts["published_on"] = pd.to_datetime(abstracts["published_on"])
+    idx = (abstracts["published_on"] < before) & (abstracts["published_on"] > after)
+    abstracts = abstracts[idx].reset_index(drop=True)
+
     # Fetch scores
     scores = _fetch_scores(abstracts)
 
     abstracts = abstracts.merge(scores, on="arxiv")
 
-    # Filter on time
-    abstracts["published_on"] = pd.to_datetime(abstracts["published_on"])
-
-    # Filter by time window
-    idx = abstracts["published_on"] > after
-
     return (
-        abstracts[idx].sort_values(by="score", ascending=False).reset_index(drop=True)
+        abstracts.sort_values(by="score", ascending=False).reset_index(drop=True)
     )
 
 

@@ -14,12 +14,12 @@ from arxiv_sanity_bot.config import (
     WINDOW_START,
     WINDOW_STOP,
     TIMEZONE,
-    ABSTRACT_CACHE_FILE,
     SOURCE,
     SCORE_THRESHOLD,
 )
 from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent
 from arxiv_sanity_bot.models.chatGPT import ChatGPT
+from arxiv_sanity_bot.store.store import DocumentStore
 from arxiv_sanity_bot.twitter.auth import TwitterOAuth1
 from arxiv_sanity_bot.twitter.send_tweet import send_tweet
 
@@ -30,7 +30,8 @@ _SOURCES = {"arxiv-sanity": arxiv_sanity_abstracts, "arxiv": arxiv_abstracts}
 @click.command()
 @click.option("--window_start", default=WINDOW_START, help="Window start", type=int)
 @click.option("--window_stop", default=WINDOW_STOP, help="Window stop", type=int)
-def bot(window_start, window_stop):
+@click.option('--dry', is_flag=True)
+def bot(window_start, window_stop, dry):
     InfoEvent(msg="Bot starting")
 
     abstracts, n_retrieved = _gather_abstracts(window_start, window_stop)
@@ -39,20 +40,28 @@ def bot(window_start, window_stop):
         return
 
     # Summarize the papers above the threshold
-    summaries, images = _summarize_top_abstracts(abstracts)
+    doc_store = DocumentStore.from_env_variable()
+    summaries = _summarize_top_abstracts(abstracts, doc_store)
 
+    if len(summaries) > 0:
+
+        send_tweets(n_retrieved, summaries, doc_store, dry)
+
+    InfoEvent(msg="Bot finishing")
+
+
+def send_tweets(n_retrieved, summaries, doc_store, dry):
+    InfoEvent("Sending summary tweet")
+    summary_tweet = ChatGPT().generate_bot_summary(n_retrieved, len(summaries))
     # Send the tweets
     oauth = TwitterOAuth1()
 
-    # First send summary tweet
-    if len(summaries) > 0:
-        InfoEvent("Sending summary tweet")
-        summary_tweet = ChatGPT().generate_bot_summary(
-            n_retrieved, len(summaries)
-        )
+    if not dry:
         url, tweet_id = send_tweet(summary_tweet, auth=oauth)
 
-        for s, img in zip(summaries[::-1], images[::-1]):
+    for s in summaries[::-1]:
+
+        if not dry:
 
             # Introduce a random delay between the tweets to avoid triggering
             # the Twitter alarm
@@ -60,53 +69,53 @@ def bot(window_start, window_stop):
             InfoEvent(msg=f"Waiting for {delay} seconds before sending next tweet")
             time.sleep(delay)
 
-            send_tweet(s, auth=oauth, img_path=img)  # , in_reply_to_tweet_id=tweet_id
+            this_url, this_tweet_id = send_tweet(
+                s["tweet"], auth=oauth, img_path=s["image"]
+            )  # , in_reply_to_tweet_id=tweet_id
+        else:
+            this_url = "https://fake.url"
+            this_tweet_id = "123456789"
 
-    InfoEvent(msg="Bot finishing")
+        if this_url is not None:
+            doc_store[s["arxiv"]] = {
+                "tweet_id": this_tweet_id,
+                "tweet_url": this_url,
+                "title": s["title"],
+                "published_on": s["published_on"],
+            }
 
 
-def _summarize_top_abstracts(selected_abstracts):
-    # This is indexed by arxiv number
-    already_processed_df = (
-        pd.read_parquet(ABSTRACT_CACHE_FILE)
-        if os.path.exists(ABSTRACT_CACHE_FILE)
-        else None
-    )
+def _summarize_top_abstracts(selected_abstracts, doc_store):
 
     summaries = []
-    images = []
-    processed = []
+
     for i, row in selected_abstracts.iterrows():
-        summary, short_url, img_path = _summarize_if_new(already_processed_df, row)
+        summary, short_url, img_path = _summarize_if_new(row, doc_store)
 
         if summary is not None:
-            summaries.append(f"{short_url} {summary}")
-            images.append(img_path)
-            processed.append(row)
+            summaries.append(
+                {
+                    "arxiv": row["arxiv"],
+                    "title": row["title"],
+                    "score": row["score"],
+                    "published_on": row["published_on"],
+                    "image": img_path,
+                    "tweet": f"{short_url} {summary}",
+                }
+            )
 
-    _save_to_cache(already_processed_df, processed)
-
-    return summaries, images
-
-
-def _save_to_cache(already_processed_df, processed):
-    if len(processed) > 0:
-        processed_df = pd.DataFrame(processed).set_index("arxiv")
-
-        if already_processed_df is not None:
-            processed_df = pd.concat([already_processed_df, processed_df])
-
-        processed_df[["title", "score", "published_on"]].to_parquet(ABSTRACT_CACHE_FILE)
+    return summaries
 
 
-def _summarize_if_new(already_processed_df, row):
+def _summarize_if_new(row, doc_store):
+
     chatGPT = ChatGPT()
     s = pyshorteners.Shortener()
 
-    if already_processed_df is not None and row["arxiv"] in already_processed_df.index:
+    if row["arxiv"] in doc_store:
         # Yes, we already processed it. Skip it
         InfoEvent(
-            f"Paper {row['arxiv']} was already processed in a previous run",
+            f"Paper {row['arxiv']} has been already summarized in a previous run",
             context={"title": row["title"], "score": row["score"]},
         )
         summary, short_url, img_path = None, None, None
@@ -151,24 +160,14 @@ def _gather_abstracts(window_start, window_stop):
     get_all_abstracts_func = _SOURCES[SOURCE].get_all_abstracts
 
     now = datetime.now(tz=TIMEZONE)
+    start = now - timedelta(hours=window_start)
+    end = now - timedelta(hours=window_stop)
     abstracts = get_all_abstracts_func(
-        after=now - timedelta(hours=window_start)
+        after=start,
+        before=end
     )  # type: pd.DataFrame
 
     n_retrieved = abstracts.shape[0]
-
-    # Remove abstracts newer than 24 hours (as we need at least 24 hours to accumulate some
-    # stats for altmetric)
-    start = now - timedelta(hours=window_start)
-    end = now - timedelta(hours=window_stop)
-    abstracts.query(
-        "published_on.between(@start, @end)",
-        inplace=True,
-        local_dict={
-            "start": start,
-            "end": end,
-        },
-    )
 
     print(abstracts.head())
 

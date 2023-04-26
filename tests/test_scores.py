@@ -26,8 +26,7 @@ async def test_gather_one_score():
 
     expected_result = {
         "arxiv": "2106.12345",
-        "score": sample_response["history"]["at"],
-        "published_on": "2021-06-08T00:00:00-07:00",
+        "score": sample_response["history"]["at"]
     }
 
     assert result == expected_result
@@ -46,8 +45,7 @@ async def test_gather_one_score():
 
     expected_result = {
         "arxiv": "2106.12345",
-        "score": -1,
-        "published_on": None,
+        "score": -1
     }
 
     assert result == expected_result

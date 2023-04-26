@@ -53,7 +53,7 @@ def test_get_all_abstracts(mock_arxiv_client):
         )
 
         abstracts = get_all_abstracts(
-            max_pages=1, after=pd.to_datetime("2020-12-31T00:00:00Z")
+            max_pages=1, after=pd.to_datetime("2020-12-31T00:00:00Z"), before=pd.to_datetime("2021-12-31T00:00:00Z")
         )
 
     assert isinstance(abstracts, pd.DataFrame)
