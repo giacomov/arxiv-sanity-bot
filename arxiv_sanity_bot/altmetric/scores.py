@@ -3,7 +3,6 @@ import time
 from typing import List, Dict
 
 import httpx
-from datetime import datetime
 import asyncio
 
 from arxiv_sanity_bot.config import (
@@ -38,18 +37,14 @@ async def _gather_one_score(arxiv_id: str) -> Dict:
     if response is not None and response.status_code == 200:
         js = response.json()
 
-        pub_on_unix = js["published_on"]
-
         # Let's use the cumulative score
         score = js["history"]["at"]
-        pub_on = datetime.fromtimestamp(pub_on_unix, tz=TIMEZONE).isoformat()
 
     else:
         # Probably not yet processed
         score = -1
-        pub_on = None
 
-    return {"arxiv": arxiv_id, "score": score, "published_on": pub_on}
+    return {"arxiv": arxiv_id, "score": score}
 
 
 async def gather_scores(

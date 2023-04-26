@@ -64,4 +64,5 @@ ARXIV_SANITY_SLEEP_TIME = 60
 # The timezone to use for all time stamps
 TIMEZONE = ZoneInfo("America/Los_Angeles")
 
-ABSTRACT_CACHE_FILE = "posted_abstracts.parquet"
+# Store
+FIREBASE_COLLECTION = "arxiv-papers"
