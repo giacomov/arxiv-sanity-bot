@@ -56,25 +56,24 @@ def send_tweets(n_retrieved, summaries, doc_store, dry):
     # Send the tweets
     oauth = TwitterOAuth1()
 
-    if not dry:
-        url, tweet_id = send_tweet(summary_tweet, auth=oauth)
+    if dry:
+        tweet_sender = lambda *args, **kwargs: ("https://fake.url", "123456789")
+    else:
+        tweet_sender = send_tweet
+
+    url, tweet_id = tweet_sender(summary_tweet, auth=oauth)
 
     for s in summaries[::-1]:
 
-        if not dry:
+        # Introduce a random delay between the tweets to avoid triggering
+        # the Twitter alarm
+        delay = random.randint(10, 30)
+        InfoEvent(msg=f"Waiting for {delay} seconds before sending next tweet")
+        time.sleep(delay)
 
-            # Introduce a random delay between the tweets to avoid triggering
-            # the Twitter alarm
-            delay = random.randint(10, 30)
-            InfoEvent(msg=f"Waiting for {delay} seconds before sending next tweet")
-            time.sleep(delay)
-
-            this_url, this_tweet_id = send_tweet(
-                s["tweet"], auth=oauth, img_path=s["image"]
-            )  # , in_reply_to_tweet_id=tweet_id
-        else:
-            this_url = "https://fake.url"
-            this_tweet_id = "123456789"
+        this_url, this_tweet_id = tweet_sender(
+            s["tweet"], auth=oauth, img_path=s["image"]
+        )  # , in_reply_to_tweet_id=tweet_id
 
         if this_url is not None:
             doc_store[s["arxiv"]] = {
