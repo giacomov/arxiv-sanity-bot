@@ -33,7 +33,7 @@ _SOURCES = {"arxiv-sanity": arxiv_sanity_abstracts, "arxiv": arxiv_abstracts}
 def bot(window_start, window_stop):
     InfoEvent(msg="Bot starting")
 
-    abstracts = _gather_abstracts(window_start, window_stop)
+    abstracts, n_retrieved = _gather_abstracts(window_start, window_stop)
 
     if abstracts.shape[0] == 0:
         return
@@ -48,7 +48,7 @@ def bot(window_start, window_stop):
     if len(summaries) > 0:
         InfoEvent("Sending summary tweet")
         summary_tweet = ChatGPT().generate_bot_summary(
-            abstracts.shape[0], len(summaries)
+            n_retrieved, len(summaries)
         )
         url, tweet_id = send_tweet(summary_tweet, auth=oauth)
 
@@ -148,12 +148,14 @@ def _gather_abstracts(window_start, window_stop):
     :return: a pandas dataframe with the papers ordered by score (best at the top)
     """
 
-    get_all_abstracts = _SOURCES[SOURCE].get_all_abstracts
+    get_all_abstracts_func = _SOURCES[SOURCE].get_all_abstracts
 
     now = datetime.now(tz=TIMEZONE)
-    abstracts = get_all_abstracts(
+    abstracts = get_all_abstracts_func(
         after=now - timedelta(hours=window_start)
     )  # type: pd.DataFrame
+
+    n_retrieved = abstracts.shape[0]
 
     # Remove abstracts newer than 24 hours (as we need at least 24 hours to accumulate some
     # stats for altmetric)
@@ -178,7 +180,7 @@ def _gather_abstracts(window_start, window_stop):
         InfoEvent(
             msg=f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
         )
-        return abstracts
+        return abstracts, n_retrieved
     else:
         InfoEvent(
             msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
@@ -188,7 +190,7 @@ def _gather_abstracts(window_start, window_stop):
         InfoEvent(msg="Too many papers above threshold. Cutting to the top 10 papers")
         abstracts = abstracts.iloc[:10]
 
-    return abstracts
+    return abstracts, n_retrieved
 
 
 if __name__ == "__main__":

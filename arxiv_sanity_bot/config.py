@@ -2,7 +2,7 @@
 from zoneinfo import ZoneInfo
 
 # Papers under this score will not be posted
-SCORE_THRESHOLD = 20
+SCORE_THRESHOLD = 10
 # Source for the abstracts
 # This should be either "arxiv" or "arxiv-sanity"
 SOURCE = "arxiv"
