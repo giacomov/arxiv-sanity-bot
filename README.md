@@ -10,7 +10,7 @@ This repository contains the code for `arxiv-sanity-bot`, a system that:
 
 1. takes the most recent AI/ML papers from [arxiv](https://arxiv.org)
 2. ranks them by [Altmetric score](https://api.altmetric.com/docs/call_arxiv.html)
-3. selects the 10 with the highest score
+3. selects papers above a threshold
 4. sends them to ChatGPT for summarization using the [OpenAI API](https://platform.openai.com/docs/introduction)
 5. Extract the first image of the paper
 6. posts the results to [Twitter](https://twitter.com/arxivsanitybot) using [tweepy](https://www.tweepy.org/)
