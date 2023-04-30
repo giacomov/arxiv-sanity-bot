@@ -75,9 +75,13 @@ def get_all_abstracts(
 
         abstracts = abstracts.merge(scores, on="arxiv")
 
-    return (
-        abstracts.sort_values(by="score", ascending=False).reset_index(drop=True)
-    )
+        return (
+            abstracts.sort_values(by="score", ascending=False).reset_index(drop=True)
+        )
+    
+    else:
+        
+        return abstracts
 
 
 def _fetch_scores(abstracts):
