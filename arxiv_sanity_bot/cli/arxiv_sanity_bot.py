@@ -15,7 +15,7 @@ from arxiv_sanity_bot.config import (
     WINDOW_STOP,
     TIMEZONE,
     SOURCE,
-    SCORE_THRESHOLD,
+    SCORE_THRESHOLD, MAX_NUM_PAPERS,
 )
 from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent
 from arxiv_sanity_bot.models.chatGPT import ChatGPT
@@ -148,19 +148,6 @@ def _summarize_if_new(row, doc_store):
 
     return summary, short_url, img_path
 
-
-def _check_dataframe(start, end, abstracts):
-    
-    if abstracts.shape[0] == 0:
-        InfoEvent(
-            msg=f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
-        )
-        return abstracts, n_retrieved
-    else:
-        InfoEvent(
-            msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
-        )
-
         
 def _gather_abstracts(window_start, window_stop):
     """
@@ -178,10 +165,16 @@ def _gather_abstracts(window_start, window_stop):
         after=start,
         before=end
     )  # type: pd.DataFrame
-    
-    _check_dataframe(start, end, abstracts)
 
     n_retrieved = abstracts.shape[0]
+
+    if n_retrieved == 0:
+
+        InfoEvent(
+            msg=f"No abstract in the time window {start} - {end} before filtering for score."
+        )
+
+        return abstracts, 0
 
     print(abstracts.head())
 
@@ -189,11 +182,18 @@ def _gather_abstracts(window_start, window_stop):
     idx = abstracts["score"] >= SCORE_THRESHOLD
     abstracts = abstracts[idx].reset_index(drop=True)
 
-    _check_dataframe(start, end, abstracts)
+    if abstracts.shape[0] == 0:
+        InfoEvent(
+            msg=f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        )
+        return abstracts, 0
+    else:
+        InfoEvent(
+            msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        )
 
-    if abstracts.shape[0] > 10:
-        InfoEvent(msg="Too many papers above threshold. Cutting to the top 10 papers")
-        abstracts = abstracts.iloc[:10]
+    InfoEvent(msg=f"Selecting at most {MAX_NUM_PAPERS}")
+    abstracts = abstracts.iloc[:MAX_NUM_PAPERS]
 
     return abstracts, n_retrieved
 
