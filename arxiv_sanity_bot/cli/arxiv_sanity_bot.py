@@ -149,6 +149,19 @@ def _summarize_if_new(row, doc_store):
     return summary, short_url, img_path
 
 
+def _check_dataframe(start, end, abstracts):
+    
+    if abstracts.shape[0] == 0:
+        InfoEvent(
+            msg=f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        )
+        return abstracts, n_retrieved
+    else:
+        InfoEvent(
+            msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        )
+
+        
 def _gather_abstracts(window_start, window_stop):
     """
     Get all abstracts from arxiv-sanity from the last 48 hours above the threshold
@@ -165,6 +178,8 @@ def _gather_abstracts(window_start, window_stop):
         after=start,
         before=end
     )  # type: pd.DataFrame
+    
+    _check_dataframe(start, end, abstracts)
 
     n_retrieved = abstracts.shape[0]
 
@@ -174,15 +189,7 @@ def _gather_abstracts(window_start, window_stop):
     idx = abstracts["score"] >= SCORE_THRESHOLD
     abstracts = abstracts[idx].reset_index(drop=True)
 
-    if abstracts.shape[0] == 0:
-        InfoEvent(
-            msg=f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
-        )
-        return abstracts, n_retrieved
-    else:
-        InfoEvent(
-            msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
-        )
+    _check_dataframe(start, end, abstracts)
 
     if abstracts.shape[0] > 10:
         InfoEvent(msg="Too many papers above threshold. Cutting to the top 10 papers")
