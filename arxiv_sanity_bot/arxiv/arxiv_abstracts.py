@@ -69,10 +69,11 @@ def get_all_abstracts(
     idx = (abstracts["published_on"] < before) & (abstracts["published_on"] > after)
     abstracts = abstracts[idx].reset_index(drop=True)
 
-    # Fetch scores
-    scores = _fetch_scores(abstracts)
+    if abstracts.shape[0] > 0:
+        # Fetch scores
+        scores = _fetch_scores(abstracts)
 
-    abstracts = abstracts.merge(scores, on="arxiv")
+        abstracts = abstracts.merge(scores, on="arxiv")
 
     return (
         abstracts.sort_values(by="score", ascending=False).reset_index(drop=True)
