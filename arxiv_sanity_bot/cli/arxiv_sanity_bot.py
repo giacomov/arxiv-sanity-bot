@@ -161,6 +161,9 @@ def _gather_abstracts(window_start, window_stop):
     now = datetime.now(tz=TIMEZONE)
     start = now - timedelta(hours=window_start)
     end = now - timedelta(hours=window_stop)
+
+    InfoEvent(msg=f"Considering time interval {start} to {end}")
+
     abstracts = get_all_abstracts_func(
         after=start,
         before=end
