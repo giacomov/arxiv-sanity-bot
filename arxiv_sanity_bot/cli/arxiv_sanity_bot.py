@@ -109,7 +109,7 @@ def _summarize_top_abstracts(selected_abstracts, doc_store):
 def _summarize_if_new(row, doc_store):
 
     chatGPT = ChatGPT()
-    s = pyshorteners.Shortener()
+    s = pyshorteners.Shortener(timeout=20)
 
     if row["arxiv"] in doc_store:
         # Yes, we already processed it. Skip it
