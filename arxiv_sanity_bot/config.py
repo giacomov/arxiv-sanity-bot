@@ -24,7 +24,7 @@ ARXIV_MAX_PAGES = 10
 
 # This defines the time window to consider
 WINDOW_START = 48  # hours ago
-WINDOW_STOP = 24  # hours ago
+WINDOW_STOP = 0  # hours ago
 
 # Number of times to try calling chatGPT before giving up
 # (if chatGPT returns summaries that are too long)
