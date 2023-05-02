@@ -3,6 +3,7 @@ import re
 
 import pandas as pd
 import arxiv
+from arxiv import SortOrder
 
 from arxiv_sanity_bot.altmetric.scores import gather_scores
 from arxiv_sanity_bot.config import (
@@ -41,11 +42,18 @@ def get_all_abstracts(
                 query=ARXIV_QUERY,
                 max_results=chunk_size * max_pages,
                 sort_by=arxiv.SortCriterion.SubmittedDate,
+                sort_order=SortOrder.Descending
             )
         )
     ):
         if i > 0 and (i % chunk_size == 0):
             InfoEvent(msg=f"Fetched {i} abstracts from Arxiv")
+
+        if result.published < after:
+            InfoEvent(
+                msg=f"Breaking after {i} papers as published date was earlier than the window start"
+            )
+            break
 
         rows.append(
             {
@@ -55,12 +63,6 @@ def get_all_abstracts(
                 "published_on": result.published
             }
         )
-
-        if result.published < after:
-            InfoEvent(
-                msg=f"Breaking after {i+1} papers as published date was earlier than the window start"
-            )
-            break
 
     abstracts = pd.DataFrame(rows)
 
