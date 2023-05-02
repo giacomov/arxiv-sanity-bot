@@ -10,7 +10,7 @@ from arxiv_sanity_bot.config import ARXIV_NUM_RETRIES
 from arxiv_sanity_bot.events import InfoEvent
 
 
-def extract_first_image(arxiv_id: str):
+def extract_first_image(arxiv_id: str, pdf_path: str=None):
     """
     Extract the first image from the PDF.
 
@@ -21,7 +21,8 @@ def extract_first_image(arxiv_id: str):
     :return: the path to the first image as a local file, or None if none was found
     """
 
-    pdf_path = download_paper(arxiv_id)
+    if pdf_path is None:
+        pdf_path = download_paper(arxiv_id)
 
     if pdf_path is None:
         return None
