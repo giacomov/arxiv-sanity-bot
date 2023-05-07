@@ -34,12 +34,14 @@ _SOURCES = {"arxiv-sanity": arxiv_sanity_abstracts, "arxiv": arxiv_abstracts}
 def bot(window_start, window_stop, dry):
     InfoEvent(msg="Bot starting")
 
+    # This returns all abstracts above the threshold
     abstracts, n_retrieved = _gather_abstracts(window_start, window_stop)
 
     if abstracts.shape[0] == 0:
         return
 
-    # Summarize the papers above the threshold
+    # Summarize the papers above the threshold that have not been summarized
+    # before
     doc_store = DocumentStore.from_env_variable()
     summaries = _summarize_top_abstracts(abstracts, doc_store)
 
@@ -88,6 +90,8 @@ def _summarize_top_abstracts(selected_abstracts, doc_store):
 
     summaries = []
 
+    n_summarized = 0
+
     for i, row in selected_abstracts.iterrows():
         summary, short_url, img_path = _summarize_if_new(row, doc_store)
 
@@ -102,6 +106,10 @@ def _summarize_top_abstracts(selected_abstracts, doc_store):
                     "tweet": f"{short_url} {summary}",
                 }
             )
+            n_summarized += 1
+
+            if n_summarized > MAX_NUM_PAPERS:
+                break
 
     return summaries
 
@@ -194,9 +202,6 @@ def _gather_abstracts(window_start, window_stop):
         InfoEvent(
             msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
         )
-
-    InfoEvent(msg=f"Selecting at most {MAX_NUM_PAPERS}")
-    abstracts = abstracts.iloc[:MAX_NUM_PAPERS]
 
     return abstracts, n_retrieved
 

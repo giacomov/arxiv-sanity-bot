@@ -63,7 +63,10 @@ def get_all_abstracts(
                 "published_on": result.published
             }
         )
-
+    
+    if len(rows) == 0:
+        return pd.DataFrame()
+    
     abstracts = pd.DataFrame(rows)
 
     # Filter on time
