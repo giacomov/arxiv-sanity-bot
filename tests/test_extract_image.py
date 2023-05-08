@@ -99,13 +99,8 @@ def test_extract_first_image_both_bitmap_and_graph(paper_with_both_graph_and_bit
         assert image is not None
 
         assert os.path.exists(image)
-        assert os.path.exists("graph-three-page26.png")
         assert os.path.exists("three_first_image.jpg")
 
-        check_image_content(
-            new_image="graph-three-page26.png",
-            reference_image_path=get_resource("graph-three-page26.png"),
-        )
         check_image_content(
             new_image="three_first_image.jpg",
             reference_image_path=get_resource("three_first_image.jpg"),

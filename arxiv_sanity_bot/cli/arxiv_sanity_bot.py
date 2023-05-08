@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 import random
 import click
@@ -34,14 +34,19 @@ _SOURCES = {"arxiv-sanity": arxiv_sanity_abstracts, "arxiv": arxiv_abstracts}
 def bot(window_start, window_stop, dry):
     InfoEvent(msg="Bot starting")
 
+    # This returns all abstracts above the threshold
     abstracts, n_retrieved = _gather_abstracts(window_start, window_stop)
 
     if abstracts.shape[0] == 0:
         return
 
-    # Summarize the papers above the threshold
+    # Summarize the papers above the threshold that have not been summarized
+    # before
     doc_store = DocumentStore.from_env_variable()
-    summaries = _summarize_top_abstracts(abstracts, doc_store)
+
+    filtered_abstracts = _keep_only_new_abstracts(abstracts, doc_store)
+
+    summaries = _summarize_top_abstracts(filtered_abstracts)
 
     if len(summaries) > 0:
 
@@ -84,12 +89,30 @@ def send_tweets(n_retrieved, summaries, doc_store, dry):
             }
 
 
-def _summarize_top_abstracts(selected_abstracts, doc_store):
+def _keep_only_new_abstracts(abstracts, doc_store):
+
+    abstracts['new'] = True
+
+    for _, row in abstracts.iterrows():
+
+        if row["arxiv"] in doc_store:
+            # Yes, we already processed it. Skip it
+            InfoEvent(
+                f"Paper {row['arxiv']} has been already summarized in a previous run",
+                context={"title": row["title"], "score": row["score"]},
+            )
+
+            row['new'] = False
+
+    return abstracts[abstracts['new']].reset_index(drop=True)
+
+
+def _summarize_top_abstracts(selected_abstracts):
 
     summaries = []
 
-    for i, row in selected_abstracts.iterrows():
-        summary, short_url, img_path = _summarize_if_new(row, doc_store)
+    for i, row in selected_abstracts.iloc[:MAX_NUM_PAPERS].iterrows():
+        summary, short_url, img_path = _summarize(row)
 
         if summary is not None:
             summaries.append(
@@ -106,45 +129,37 @@ def _summarize_top_abstracts(selected_abstracts, doc_store):
     return summaries
 
 
-def _summarize_if_new(row, doc_store):
+def _summarize(row):
 
     chatGPT = ChatGPT()
     s = pyshorteners.Shortener(timeout=20)
 
-    if row["arxiv"] in doc_store:
-        # Yes, we already processed it. Skip it
-        InfoEvent(
-            f"Paper {row['arxiv']} has been already summarized in a previous run",
-            context={"title": row["title"], "score": row["score"]},
-        )
-        summary, short_url, img_path = None, None, None
-    else:
-        summary = chatGPT.summarize_abstract(row["abstract"])
+    summary = chatGPT.summarize_abstract(row["abstract"])
 
-        for _ in range(10):
-            # Remove the 'http://' part which is useless and consumes characters
-            # for nothing
-            url = _SOURCES[SOURCE].get_url(row["arxiv"])
-            try:
-                short_url = s.tinyurl.short(url).split("//")[-1]
-            except requests.exceptions.Timeout as e:
-                RetryableErrorEvent(
-                    msg="Could not shorten URL", context={"url": url, "error": str(e)}
-                )
-                time.sleep(10)
-                continue
-            else:
-                InfoEvent(
-                    msg=f"Processed abstract for {url}",
-                    context={"title": row["title"], "score": row["score"]},
-                )
-                break
+    for _ in range(10):
+        # Remove the 'http://' part which is useless and consumes characters
+        # for nothing
+        url = _SOURCES[SOURCE].get_url(row["arxiv"])
+        try:
+            short_url = s.tinyurl.short(url).split("//")[-1]
+        except requests.exceptions.Timeout as e:
+            RetryableErrorEvent(
+                msg="Could not shorten URL", context={"url": url, "error": str(e)}
+            )
+            time.sleep(10)
+            continue
         else:
-            InfoEvent("Could not shorten URL. Dropping it from the tweet!")
-            short_url = ""
+            InfoEvent(
+                msg=f"Processed abstract for {url}",
+                context={"title": row["title"], "score": row["score"]},
+            )
+            break
+    else:
+        InfoEvent("Could not shorten URL. Dropping it from the tweet!")
+        short_url = ""
 
-        # Get image from the first page
-        img_path = extract_first_image(row["arxiv"])
+    # Get image from the first page
+    img_path = extract_first_image(row["arxiv"])
 
     return summary, short_url, img_path
 
@@ -162,7 +177,7 @@ def _gather_abstracts(window_start, window_stop):
     start = now - timedelta(hours=window_start)
     end = now - timedelta(hours=window_stop)
 
-    InfoEvent(msg=f"Considering time interval {start} to {end}")
+    InfoEvent(msg=f"Considering time interval {start} to {end} UTC")
 
     abstracts = get_all_abstracts_func(
         after=start,
@@ -194,9 +209,6 @@ def _gather_abstracts(window_start, window_stop):
         InfoEvent(
             msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
         )
-
-    InfoEvent(msg=f"Selecting at most {MAX_NUM_PAPERS}")
-    abstracts = abstracts.iloc[:MAX_NUM_PAPERS]
 
     return abstracts, n_retrieved
 

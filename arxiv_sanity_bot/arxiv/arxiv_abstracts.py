@@ -46,8 +46,6 @@ def get_all_abstracts(
             )
         )
     ):
-        if i > 0 and (i % chunk_size == 0):
-            InfoEvent(msg=f"Fetched {i} abstracts from Arxiv")
 
         if result.published < after:
             InfoEvent(
@@ -64,6 +62,11 @@ def get_all_abstracts(
             }
         )
 
+    InfoEvent(msg=f"Fetched {len(rows)} abstracts from Arxiv")
+
+    if len(rows) == 0:
+        return pd.DataFrame()
+    
     abstracts = pd.DataFrame(rows)
 
     # Filter on time

@@ -7,7 +7,6 @@ import asyncio
 
 from arxiv_sanity_bot.config import (
     ALTMETRIC_CHUNK_SIZE,
-    TIMEZONE,
     ALTMETRIC_N_RETRIES,
     ALTMETRIC_WAIT_TIME,
 )
