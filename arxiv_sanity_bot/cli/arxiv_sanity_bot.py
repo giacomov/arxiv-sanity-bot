@@ -1,5 +1,4 @@
-import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import time
 import random
 import click
@@ -90,11 +89,9 @@ def send_tweets(n_retrieved, summaries, doc_store, dry):
 
 
 def _keep_only_new_abstracts(abstracts, doc_store):
+    abstracts["new"] = True
 
-    abstracts['new'] = True
-
-    for _, row in abstracts.iterrows():
-
+    for i, row in abstracts.iterrows():
         if row["arxiv"] in doc_store:
             # Yes, we already processed it. Skip it
             InfoEvent(
@@ -102,9 +99,9 @@ def _keep_only_new_abstracts(abstracts, doc_store):
                 context={"title": row["title"], "score": row["score"]},
             )
 
-            row['new'] = False
+            abstracts.iloc[i] = False
 
-    return abstracts[abstracts['new']].reset_index(drop=True)
+    return abstracts[abstracts["new"]].reset_index(drop=True)
 
 
 def _summarize_top_abstracts(selected_abstracts):
