@@ -4,6 +4,8 @@ from arxiv_sanity_bot.events import InfoEvent
 
 
 PADDING = 7
+
+
 def _enlarge_rect(p):
     # import pdb;pdb.set_trace()
     w = p["width"]
@@ -11,12 +13,12 @@ def _enlarge_rect(p):
     # print(f"{w} {p['rect'].width}")
 
     color = None
-    if p['color']:
-        color = p['color']
-    elif p['fill']:
-        color = p['fill']
+    if p["color"]:
+        color = p["color"]
+    elif p["fill"]:
+        color = p["fill"]
 
-    return p["rect"] + (-PADDING, -PADDING, PADDING, PADDING), color #+ (-w, -w, w, w)
+    return p["rect"] + (-PADDING, -PADDING, PADDING, PADDING), color  # + (-w, -w, w, w)
 
 
 def is_grayish_or_blackish(rgb, threshold=20):
@@ -24,12 +26,22 @@ def is_grayish_or_blackish(rgb, threshold=20):
     if (max(r, g, b) - min(r, g, b)) <= (threshold / 255):
         # If all values are equal, the color is a shade of gray
         return True
-    elif r < 10/255 and g < 10/255 and b < 10/255:
+    elif r < 10 / 255 and g < 10 / 255 and b < 10 / 255:
         # If all values are very low (close to 0), the color is black
         return True
     else:
         # Otherwise, the color is not grayish or blackish
         return False
+
+
+def _good_aspect_ratio_gray(ratio):
+
+    return 1 < ratio < 10
+
+
+def _good_width_and_height(r):
+
+    return r.width > 50 and r.height > 50
 
 
 def _is_not_noise(r, color):
@@ -38,7 +50,8 @@ def _is_not_noise(r, color):
 
     # Black lines
     if color is not None and is_grayish_or_blackish(color):
-        good_or_bad = (ratio > 1) and (ratio < 10) and (r.width > 50) and (r.height > 50) and (area > 1000)
+        good_or_bad = _good_aspect_ratio_gray(ratio) and _good_width_and_height(r) and area > 1000
+
         # print(f"{ratio} {area} {r.width} {r.height} -> {good_or_bad}")
         return good_or_bad
     else:
@@ -46,7 +59,6 @@ def _is_not_noise(r, color):
 
 
 def _union_all_rectangles(new_rects):
-
     # for r in new_rects:
     #     print(f"{r}: ratio: {r.width / r.height} area: {r.width * r.height}, w: {r.width}, h: {r.height}")
 
@@ -112,7 +124,6 @@ def _get_bounding_boxes(page):
     new_rects = []
 
     for p in page.get_drawings():
-
         r, remainder, color = _process_drawing(new_rects, p)
 
         if remainder == [] and _is_not_noise(r, color):

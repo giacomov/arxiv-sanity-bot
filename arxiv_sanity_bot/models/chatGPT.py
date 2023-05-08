@@ -64,8 +64,8 @@ class ChatGPT(LLM):
                 {
                     "role": "user",
                     "content": f"Generate an engaging variation of the following sentence, "
-                               f"but avoid sounding too human (you are a bot!): "
-                               f"{sentence}",
+                    f"but avoid sounding too human (you are a bot!): "
+                    f"{sentence}",
                 },
             ]
 

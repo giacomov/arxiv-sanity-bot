@@ -1,5 +1,4 @@
-import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import time
 import random
 import click
@@ -15,7 +14,8 @@ from arxiv_sanity_bot.config import (
     WINDOW_STOP,
     TIMEZONE,
     SOURCE,
-    SCORE_THRESHOLD, MAX_NUM_PAPERS,
+    SCORE_THRESHOLD,
+    MAX_NUM_PAPERS,
 )
 from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent
 from arxiv_sanity_bot.models.chatGPT import ChatGPT
@@ -30,7 +30,7 @@ _SOURCES = {"arxiv-sanity": arxiv_sanity_abstracts, "arxiv": arxiv_abstracts}
 @click.command()
 @click.option("--window_start", default=WINDOW_START, help="Window start", type=int)
 @click.option("--window_stop", default=WINDOW_STOP, help="Window stop", type=int)
-@click.option('--dry', is_flag=True)
+@click.option("--dry", is_flag=True)
 def bot(window_start, window_stop, dry):
     InfoEvent(msg="Bot starting")
 
@@ -49,7 +49,6 @@ def bot(window_start, window_stop, dry):
     summaries = _summarize_top_abstracts(filtered_abstracts)
 
     if len(summaries) > 0:
-
         send_tweets(n_retrieved, summaries, doc_store, dry)
 
     InfoEvent(msg="Bot finishing")
@@ -69,7 +68,6 @@ def send_tweets(n_retrieved, summaries, doc_store, dry):
     url, tweet_id = tweet_sender(summary_tweet, auth=oauth)
 
     for s in summaries[::-1]:
-
         # Introduce a random delay between the tweets to avoid triggering
         # the Twitter alarm
         delay = random.randint(10, 30)
@@ -90,11 +88,9 @@ def send_tweets(n_retrieved, summaries, doc_store, dry):
 
 
 def _keep_only_new_abstracts(abstracts, doc_store):
+    abstracts["new"] = True
 
-    abstracts['new'] = True
-
-    for _, row in abstracts.iterrows():
-
+    for i, row in abstracts.iterrows():
         if row["arxiv"] in doc_store:
             # Yes, we already processed it. Skip it
             InfoEvent(
@@ -102,13 +98,12 @@ def _keep_only_new_abstracts(abstracts, doc_store):
                 context={"title": row["title"], "score": row["score"]},
             )
 
-            row['new'] = False
+            abstracts.iloc[i] = False
 
-    return abstracts[abstracts['new']].reset_index(drop=True)
+    return abstracts[abstracts["new"]].reset_index(drop=True)
 
 
 def _summarize_top_abstracts(selected_abstracts):
-
     summaries = []
 
     for i, row in selected_abstracts.iloc[:MAX_NUM_PAPERS].iterrows():
@@ -130,7 +125,6 @@ def _summarize_top_abstracts(selected_abstracts):
 
 
 def _summarize(row):
-
     chatGPT = ChatGPT()
     s = pyshorteners.Shortener(timeout=20)
 
@@ -163,7 +157,7 @@ def _summarize(row):
 
     return summary, short_url, img_path
 
-        
+
 def _gather_abstracts(window_start, window_stop):
     """
     Get all abstracts from arxiv-sanity from the last 48 hours above the threshold
@@ -179,15 +173,11 @@ def _gather_abstracts(window_start, window_stop):
 
     InfoEvent(msg=f"Considering time interval {start} to {end} UTC")
 
-    abstracts = get_all_abstracts_func(
-        after=start,
-        before=end
-    )  # type: pd.DataFrame
+    abstracts = get_all_abstracts_func(after=start, before=end)  # type: pd.DataFrame
 
     n_retrieved = abstracts.shape[0]
 
     if n_retrieved == 0:
-
         InfoEvent(
             msg=f"No abstract in the time window {start} - {end} before filtering for score."
         )

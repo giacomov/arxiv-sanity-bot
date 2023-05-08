@@ -24,10 +24,7 @@ async def test_gather_one_score():
         arxiv_id = "2106.12345"
         result = await _gather_one_score(arxiv_id)
 
-    expected_result = {
-        "arxiv": "2106.12345",
-        "score": sample_response["history"]["at"]
-    }
+    expected_result = {"arxiv": "2106.12345", "score": sample_response["history"]["at"]}
 
     assert result == expected_result
 
@@ -43,10 +40,7 @@ async def test_gather_one_score():
     ):
         result = await _gather_one_score(arxiv_id)
 
-    expected_result = {
-        "arxiv": "2106.12345",
-        "score": -1
-    }
+    expected_result = {"arxiv": "2106.12345", "score": -1}
 
     assert result == expected_result
 

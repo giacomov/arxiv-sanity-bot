@@ -27,46 +27,19 @@ def get_all_abstracts(
     max_pages=ARXIV_MAX_PAGES,
     chunk_size=ARXIV_PAGE_SIZE,
 ) -> pd.DataFrame:
-
     custom_client = arxiv.Client(
         page_size=chunk_size,
         delay_seconds=ARXIV_DELAY,
         num_retries=ARXIV_NUM_RETRIES,
     )
 
-    rows = []
-
-    for i, result in enumerate(
-        custom_client.results(
-            arxiv.Search(
-                query=ARXIV_QUERY,
-                max_results=chunk_size * max_pages,
-                sort_by=arxiv.SortCriterion.SubmittedDate,
-                sort_order=SortOrder.Descending
-            )
-        )
-    ):
-
-        if result.published < after:
-            InfoEvent(
-                msg=f"Breaking after {i} papers as published date was earlier than the window start"
-            )
-            break
-
-        rows.append(
-            {
-                "arxiv": _extract_arxiv_id(result.entry_id),
-                "title": result.title,
-                "abstract": sanitize_text(result.summary),
-                "published_on": result.published
-            }
-        )
+    rows = _fetch_from_arxiv(after, chunk_size, custom_client, max_pages)
 
     InfoEvent(msg=f"Fetched {len(rows)} abstracts from Arxiv")
 
     if len(rows) == 0:
         return pd.DataFrame()
-    
+
     abstracts = pd.DataFrame(rows)
 
     # Filter on time
@@ -80,13 +53,39 @@ def get_all_abstracts(
 
         abstracts = abstracts.merge(scores, on="arxiv")
 
-        return (
-            abstracts.sort_values(by="score", ascending=False).reset_index(drop=True)
-        )
-    
+        return abstracts.sort_values(by="score", ascending=False).reset_index(drop=True)
+
     else:
-        
         return abstracts
+
+
+def _fetch_from_arxiv(after, chunk_size, custom_client, max_pages):
+    rows = []
+    for i, result in enumerate(
+            custom_client.results(
+                arxiv.Search(
+                    query=ARXIV_QUERY,
+                    max_results=chunk_size * max_pages,
+                    sort_by=arxiv.SortCriterion.SubmittedDate,
+                    sort_order=SortOrder.Descending,
+                )
+            )
+    ):
+        if result.published < after:
+            InfoEvent(
+                msg=f"Breaking after {i} papers as published date was earlier than the window start"
+            )
+            break
+
+        rows.append(
+            {
+                "arxiv": _extract_arxiv_id(result.entry_id),
+                "title": result.title,
+                "abstract": sanitize_text(result.summary),
+                "published_on": result.published,
+            }
+        )
+    return rows
 
 
 def _fetch_scores(abstracts):

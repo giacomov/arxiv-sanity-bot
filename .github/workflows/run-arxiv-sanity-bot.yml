@@ -52,6 +52,16 @@ jobs:
         if [ ${{ inputs.window_start }} != "" ]; then
             arxiv-sanity-bot --window_start ${{ inputs.window_start }} --window_stop ${{ inputs.window_stop }}
         else 
-            arxiv-sanity-bot
+        
+            if [ $(date +%a) == "Mon" ]; then
+              echo "Setting window_start to 96 because it is Monday"
+              export WINDOW_START=96
+            else
+              echo "Setting window_start to 72"
+              export WINDOW_START=72
+            fi
+        
+            arxiv-sanity-bot --window_start $WINDOW_START
+        
         fi
        

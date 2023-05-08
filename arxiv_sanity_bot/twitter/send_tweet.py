@@ -79,12 +79,10 @@ def send_tweet(
     )
 
     if response is None:
-
         tweet_url = None
         tweet_id = None
 
     else:
-
         InfoEvent(msg=f"Sent tweet {tweet}")
 
         tweet_url = f"https://twitter.com/user/status/{response.data['id']}"
