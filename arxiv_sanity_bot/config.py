@@ -23,7 +23,7 @@ ARXIV_PAGE_SIZE = 100  # papers
 ARXIV_MAX_PAGES = 10
 
 # This defines the time window to consider
-WINDOW_START = 48  # hours ago
+WINDOW_START = 72  # hours ago
 WINDOW_STOP = 0  # hours ago
 
 # Number of times to try calling chatGPT before giving up
@@ -64,7 +64,7 @@ ARXIV_SANITY_N_TRIALS = 10
 ARXIV_SANITY_SLEEP_TIME = 60
 
 # The timezone to use for all time stamps
-TIMEZONE = ZoneInfo("America/Los_Angeles")
+TIMEZONE = ZoneInfo("UTC")
 
 # Store
 FIREBASE_COLLECTION = "arxiv-papers"
