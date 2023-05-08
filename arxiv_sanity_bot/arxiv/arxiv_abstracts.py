@@ -33,32 +33,7 @@ def get_all_abstracts(
         num_retries=ARXIV_NUM_RETRIES,
     )
 
-    rows = []
-
-    for i, result in enumerate(
-        custom_client.results(
-            arxiv.Search(
-                query=ARXIV_QUERY,
-                max_results=chunk_size * max_pages,
-                sort_by=arxiv.SortCriterion.SubmittedDate,
-                sort_order=SortOrder.Descending,
-            )
-        )
-    ):
-        if result.published < after:
-            InfoEvent(
-                msg=f"Breaking after {i} papers as published date was earlier than the window start"
-            )
-            break
-
-        rows.append(
-            {
-                "arxiv": _extract_arxiv_id(result.entry_id),
-                "title": result.title,
-                "abstract": sanitize_text(result.summary),
-                "published_on": result.published,
-            }
-        )
+    rows = _fetch_from_arxiv(after, chunk_size, custom_client, max_pages)
 
     InfoEvent(msg=f"Fetched {len(rows)} abstracts from Arxiv")
 
@@ -82,6 +57,35 @@ def get_all_abstracts(
 
     else:
         return abstracts
+
+
+def _fetch_from_arxiv(after, chunk_size, custom_client, max_pages):
+    rows = []
+    for i, result in enumerate(
+            custom_client.results(
+                arxiv.Search(
+                    query=ARXIV_QUERY,
+                    max_results=chunk_size * max_pages,
+                    sort_by=arxiv.SortCriterion.SubmittedDate,
+                    sort_order=SortOrder.Descending,
+                )
+            )
+    ):
+        if result.published < after:
+            InfoEvent(
+                msg=f"Breaking after {i} papers as published date was earlier than the window start"
+            )
+            break
+
+        rows.append(
+            {
+                "arxiv": _extract_arxiv_id(result.entry_id),
+                "title": result.title,
+                "abstract": sanitize_text(result.summary),
+                "published_on": result.published,
+            }
+        )
+    return rows
 
 
 def _fetch_scores(abstracts):
