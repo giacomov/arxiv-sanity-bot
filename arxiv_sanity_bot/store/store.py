@@ -18,7 +18,6 @@ class DocumentStore:
 
     @classmethod
     def from_env_variable(cls, env_variable_name="FIREBASE_CREDENTIALS"):
-
         return cls(
             firebase_credentials=cls._decode_credentials_from_env_variable(
                 env_variable_name
@@ -40,6 +39,5 @@ class DocumentStore:
         return doc_ref.get().to_dict()
 
     def __contains__(self, document_id):
-
         doc_ref = self._client.collection(FIREBASE_COLLECTION).document(document_id)
         return doc_ref.get().exists

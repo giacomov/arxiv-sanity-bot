@@ -10,7 +10,7 @@ from mockfirestore import MockFirestore
 from arxiv_sanity_bot.store.store import DocumentStore
 
 
-FIREBASE_COLLECTION = 'test_collection'
+FIREBASE_COLLECTION = "test_collection"
 
 
 def get_resource(resource):
@@ -19,7 +19,8 @@ def get_resource(resource):
     # Create the path to the resource file
     return current_file_dir / "resources" / resource
 
-@pytest.fixture(scope='module')
+
+@pytest.fixture(scope="module")
 def store():
     firebase_credentials = {
         "type": "service_account",
@@ -31,43 +32,38 @@ def store():
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/test%40test-project.iam.gserviceaccount.com"
+        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/test%40test-project.iam.gserviceaccount.com",
     }
 
-    os.environ['FIREBASE_CREDENTIALS'] = base64.b64encode(json.dumps(firebase_credentials).encode()).decode()
+    os.environ["FIREBASE_CREDENTIALS"] = base64.b64encode(
+        json.dumps(firebase_credentials).encode()
+    ).decode()
 
     with patch("firebase_admin.initialize_app") as mock_initialize_app:
-        with patch("firebase_admin.firestore.client", return_value=MockFirestore()) as mock_client:
-
+        with patch(
+            "firebase_admin.firestore.client", return_value=MockFirestore()
+        ) as mock_client:
             store = DocumentStore.from_env_variable()
 
             yield store
 
 
 def test_set_and_get(store):
+    item = {"one": "two"}
 
-    item = {
-        'one': 'two'
-    }
+    store["hey"] = item
 
-    store['hey'] = item
-
-    assert store['hey'] == item
+    assert store["hey"] == item
 
 
 def test_membership(store):
+    item1 = {"one": "two"}
 
-    item1 = {
-        'one': 'two'
-    }
+    item2 = {"three": "four"}
 
-    item2 = {
-        'three': 'four'
-    }
+    store["one"] = item1
+    store["two"] = item2
 
-    store['one'] = item1
-    store['two'] = item2
-
-    assert 'one' in store
-    assert 'two' in store
-    assert 'three' not in store
+    assert "one" in store
+    assert "two" in store
+    assert "three" not in store

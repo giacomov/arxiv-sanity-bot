@@ -10,7 +10,7 @@ from arxiv_sanity_bot.config import ARXIV_NUM_RETRIES
 from arxiv_sanity_bot.events import InfoEvent
 
 
-def extract_first_image(arxiv_id: str, pdf_path: str=None):
+def extract_first_image(arxiv_id: str, pdf_path: str = None):
     """
     Extract the first image from the PDF.
 
