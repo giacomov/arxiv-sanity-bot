@@ -111,9 +111,7 @@ def _summarize_top_abstracts(selected_abstracts):
 
     summaries = []
 
-    n_summarized = 0
-
-    for i, row in selected_abstracts.iterrows():
+    for i, row in selected_abstracts.iloc[:MAX_NUM_PAPERS].iterrows():
         summary, short_url, img_path = _summarize(row)
 
         if summary is not None:
@@ -127,10 +125,6 @@ def _summarize_top_abstracts(selected_abstracts):
                     "tweet": f"{short_url} {summary}",
                 }
             )
-            n_summarized += 1
-
-            if n_summarized > MAX_NUM_PAPERS:
-                break
 
     return summaries
 
