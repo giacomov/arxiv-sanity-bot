@@ -34,13 +34,23 @@ def is_grayish_or_blackish(rgb, threshold=20):
         return False
 
 
+def _good_aspect_ratio_gray(ratio):
+
+    return 1 < ratio < 10
+
+
+def _good_width_and_height(r):
+
+    return r.width > 50 and r.height > 50
+
+
 def _is_not_noise(r, color):
     ratio = r.width / (r.height + 1e-3)
     area = r.width * r.height
 
     # Black lines
     if color is not None and is_grayish_or_blackish(color):
-        good_or_bad = 1 < ratio < 10 and r.width > 50 and r.height > 50 and area > 1000
+        good_or_bad = _good_aspect_ratio_gray(ratio) and _good_width_and_height(r) and area > 1000
 
         # print(f"{ratio} {area} {r.width} {r.height} -> {good_or_bad}")
         return good_or_bad
