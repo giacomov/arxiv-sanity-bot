@@ -28,12 +28,7 @@ class ChatGPT(LLM):
                 },
             ]
 
-            r = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo-0301",
-                messages=history,
-            )
-
-            summary = r["choices"][0]["message"]["content"].strip()
+            summary = self._call_chatgpt(history)
 
             if len(summary) <= TWEET_TEXT_LENGTH:
                 # This is a good tweet
@@ -53,28 +48,35 @@ class ChatGPT(LLM):
 
     def generate_bot_summary(self, n_papers_considered: int, n_papers_reported: int):
         # Generate a fun variation of the following phrase using ChatGPT
-        sentence = (
+        original_sentence = (
             f"Hi! In this round I considered {n_papers_considered} papers and selected "
             f"{n_papers_reported} noteworthy ones. One-sentence summaries in the thread."
         )
 
+        history = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {
+                "role": "user",
+                "content": f"Generate an engaging variation of the following sentence, "
+                           f"but avoid sounding too human (you are a bot!): "
+                           f"{original_sentence}",
+            },
+        ]
+
+        sentence = self._call_chatgpt(history)
+
+        return sentence
+
+    @staticmethod
+    def _call_chatgpt(history):
         for i in range(CHATGPT_N_TRIALS):
-            history = [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {
-                    "role": "user",
-                    "content": f"Generate an engaging variation of the following sentence, "
-                    f"but avoid sounding too human (you are a bot!): "
-                    f"{sentence}",
-                },
-            ]
 
             try:
                 r = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo-0301",
                     messages=history,
                 )
-            except openai.OpenAIError as e:
+            except Exception as e:
                 RetryableErrorEvent(
                     msg="Could not generate summary sentence",
                     context={"exception": str(e)},
@@ -83,6 +85,11 @@ class ChatGPT(LLM):
                 continue
             else:
                 sentence = r["choices"][0]["message"]["content"].strip()
-                break
+                return sentence
 
-        return sentence
+        else:
+
+            FatalErrorEvent(
+                msg=f"Calling ChatGPT failed after {CHATGPT_N_TRIALS} attempts"
+            )
+
