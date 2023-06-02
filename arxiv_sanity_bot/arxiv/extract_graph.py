@@ -94,9 +94,18 @@ def _regularize_box(x0, x1, y0, y1):
 
 
 def extract_graph(pdf_path, arxiv_id):
+
+    try:
+        return _extract_graph(pdf_path, arxiv_id)
+    except Exception as e:
+        InfoEvent(msg="Extraction of graph failed with an exception", context={"exception": str(e)})
+
+
+def _extract_graph(pdf_path, arxiv_id):
     doc = fitz.open(pdf_path)
 
     for page in doc:
+
         new_rects = _get_bounding_boxes(page)
 
         if len(new_rects) == 0:
