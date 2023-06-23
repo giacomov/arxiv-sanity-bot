@@ -99,6 +99,7 @@ def extract_graph(pdf_path, arxiv_id):
         return _extract_graph(pdf_path, arxiv_id)
     except Exception as e:
         InfoEvent(msg="Extraction of graph failed with an exception", context={"exception": str(e)})
+        return None, None
 
 
 def _extract_graph(pdf_path, arxiv_id):
