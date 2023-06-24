@@ -11,7 +11,7 @@ on:
         type: "string"
       window_stop:
         description: "Stop of the window in days. Ex. 24 means that the window stops 24 hours ago"
-        default: "0"
+        default: "-24"  # negative means in the future. This is to neutralize time zone differences
         type: "string"
 
 jobs:
@@ -61,7 +61,7 @@ jobs:
               export WINDOW_START=72
             fi
         
-            arxiv-sanity-bot --window_start $WINDOW_START
+            arxiv-sanity-bot --window_start $WINDOW_START --window_stop -24
         
         fi
        

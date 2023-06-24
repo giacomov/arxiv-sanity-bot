@@ -55,7 +55,7 @@ def send_tweet(
     media_ids = []
     if img_path is not None:
         upload = twitter_autoretry(
-            lambda: api.media_upload(img_path), "Could not upload image"
+            lambda: api.simple_upload(img_path), "Could not upload image"
         )
 
         InfoEvent(msg=f"Uploaded image {img_path} as media_id {upload.media_id_string}")
@@ -79,13 +79,19 @@ def send_tweet(
     )
 
     if response is None:
-        tweet_url = None
-        tweet_id = None
 
-    else:
-        InfoEvent(msg=f"Sent tweet {tweet}")
+        # Twitter sometimes removes images because they are falsely classified as spam.
+        # Try sending the tweet without image
+        response = twitter_autoretry(
+            lambda: client.create_tweet(
+                text=tweet, in_reply_to_tweet_id=in_reply_to_tweet_id
+            ),
+            "Could not send tweet even without image",
+        )
 
-        tweet_url = f"https://twitter.com/user/status/{response.data['id']}"
-        tweet_id = response.data["id"]
+    InfoEvent(msg=f"Sent tweet {tweet}")
+
+    tweet_url = f"https://twitter.com/user/status/{response.data['id']}" if response else None
+    tweet_id = response.data["id"] if response else None
 
     return tweet_url, tweet_id
