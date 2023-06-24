@@ -31,7 +31,8 @@ _SOURCES = {"arxiv-sanity": arxiv_sanity_abstracts, "arxiv": arxiv_abstracts}
 @click.option("--window_start", default=WINDOW_START, help="Window start", type=int)
 @click.option("--window_stop", default=WINDOW_STOP, help="Window stop", type=int)
 @click.option("--dry", is_flag=True)
-def bot(window_start, window_stop, dry):
+@click.option("--greeting/--no-greeting", type=bool, default=True)
+def bot(window_start, window_stop, dry, greeting):
     InfoEvent(msg="Bot starting")
 
     # This returns all abstracts above the threshold
@@ -49,14 +50,13 @@ def bot(window_start, window_stop, dry):
     summaries = _summarize_top_abstracts(filtered_abstracts)
 
     if len(summaries) > 0:
-        send_tweets(n_retrieved, summaries, doc_store, dry)
+        send_tweets(n_retrieved, summaries, doc_store, dry, greeting)
 
     InfoEvent(msg="Bot finishing")
 
 
-def send_tweets(n_retrieved, summaries, doc_store, dry):
-    InfoEvent("Sending summary tweet")
-    summary_tweet = ChatGPT().generate_bot_summary(n_retrieved, len(summaries))
+def send_tweets(n_retrieved, summaries, doc_store, dry, greeting):
+
     # Send the tweets
     oauth = TwitterOAuth1()
 
@@ -65,7 +65,12 @@ def send_tweets(n_retrieved, summaries, doc_store, dry):
     else:
         tweet_sender = send_tweet
 
-    url, tweet_id = tweet_sender(summary_tweet, auth=oauth)
+    if greeting:
+
+        InfoEvent("Sending summary tweet")
+        summary_tweet = ChatGPT().generate_bot_summary(n_retrieved, len(summaries))
+
+        _ = tweet_sender(summary_tweet, auth=oauth)
 
     for s in summaries[::-1]:
         # Introduce a random delay between the tweets to avoid triggering
