@@ -64,12 +64,10 @@ def send_tweets(n_retrieved, summaries, doc_store, dry):
     else:
         tweet_sender = send_tweet
 
-    if greeting:
+    InfoEvent("Sending summary tweet")
+    summary_tweet = ChatGPT().generate_bot_summary(n_retrieved, len(summaries))
 
-        InfoEvent("Sending summary tweet")
-        summary_tweet = ChatGPT().generate_bot_summary(n_retrieved, len(summaries))
-
-        _ = tweet_sender(summary_tweet, auth=oauth)
+    _ = tweet_sender(summary_tweet, auth=oauth)
 
     for s in summaries[::-1]:
         # Introduce a random delay between the tweets to avoid triggering
