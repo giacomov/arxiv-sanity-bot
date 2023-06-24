@@ -31,8 +31,7 @@ _SOURCES = {"arxiv-sanity": arxiv_sanity_abstracts, "arxiv": arxiv_abstracts}
 @click.option("--window_start", default=WINDOW_START, help="Window start", type=int)
 @click.option("--window_stop", default=WINDOW_STOP, help="Window stop", type=int)
 @click.option("--dry", is_flag=True)
-@click.option("--greeting/--no-greeting", type=bool, default=True)
-def bot(window_start, window_stop, dry, greeting):
+def bot(window_start, window_stop, dry):
     InfoEvent(msg="Bot starting")
 
     # This returns all abstracts above the threshold
@@ -50,12 +49,12 @@ def bot(window_start, window_stop, dry, greeting):
     summaries = _summarize_top_abstracts(filtered_abstracts)
 
     if len(summaries) > 0:
-        send_tweets(n_retrieved, summaries, doc_store, dry, greeting)
+        send_tweets(n_retrieved, summaries, doc_store, dry)
 
     InfoEvent(msg="Bot finishing")
 
 
-def send_tweets(n_retrieved, summaries, doc_store, dry, greeting):
+def send_tweets(n_retrieved, summaries, doc_store, dry):
 
     # Send the tweets
     oauth = TwitterOAuth1()
