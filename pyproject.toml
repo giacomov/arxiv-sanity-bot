@@ -17,7 +17,8 @@ dependencies = [
     "pypdf[image] == 3.8.0",
     "PyMuPDF == 1.22.1",
     "firebase == 4.0.1",
-    "firebase-admin == 6.1.0"
+    "firebase-admin == 6.1.0",
+    "atoma==0.0.17"
     ]
 
 [build-system]

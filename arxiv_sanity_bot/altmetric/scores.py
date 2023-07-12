@@ -23,7 +23,7 @@ async def _gather_one_score(arxiv_id: str) -> Dict:
                 response = await client.get(url)
         except Exception as e:
             RetryableErrorEvent(
-                msg=f"Error retrieving {arxiv_id} from altmetric",
+                msg=f"Error retrieving {arxiv_id} from altmetric at {url}",
                 context={"exception": str(e)},
             )
             time.sleep(ALTMETRIC_WAIT_TIME)

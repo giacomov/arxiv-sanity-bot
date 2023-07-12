@@ -10,6 +10,8 @@ import arxiv
 from unittest.mock import Mock, patch, MagicMock
 import pytest
 
+from arxiv_sanity_bot.sanitize_text import sanitize_text
+
 
 @pytest.fixture
 def mock_arxiv_client():
@@ -42,21 +44,35 @@ def test_get_all_abstracts(mock_arxiv_client):
     with mock.patch(
         "arxiv_sanity_bot.arxiv.arxiv_abstracts._fetch_scores"
     ) as mock_fetch_scores:
-        mock_fetch_scores.return_value = pd.DataFrame(
-            [
+
+        with mock.patch(
+                "arxiv_sanity_bot.arxiv.arxiv_abstracts._fetch_from_arxiv_2"
+        ) as mock_fetch_from_arxiv_2:
+
+            mock_fetch_from_arxiv_2.return_value = [
                 {
                     "arxiv": "2101.12345",
-                    "score": 9.0,
+                    "title": "Sample Title",
+                    "abstract": sanitize_text("Sample abstract with some & special % characters."),
                     "published_on": pd.to_datetime("2021-01-01T00:00:00Z"),
                 }
             ]
-        )
 
-        abstracts = get_all_abstracts(
-            max_pages=1,
-            after=pd.to_datetime("2020-12-31T00:00:00Z"),
-            before=pd.to_datetime("2021-12-31T00:00:00Z"),
-        )
+            mock_fetch_scores.return_value = pd.DataFrame(
+                [
+                    {
+                        "arxiv": "2101.12345",
+                        "score": 9.0,
+                        "published_on": pd.to_datetime("2021-01-01T00:00:00Z"),
+                    }
+                ]
+            )
+
+            abstracts = get_all_abstracts(
+                max_pages=1,
+                after=pd.to_datetime("2020-12-31T00:00:00Z"),
+                before=pd.to_datetime("2021-12-31T00:00:00Z"),
+            )
 
     assert isinstance(abstracts, pd.DataFrame)
     assert len(abstracts) == 1
