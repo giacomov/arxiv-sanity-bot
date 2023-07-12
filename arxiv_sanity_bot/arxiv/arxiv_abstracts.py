@@ -1,9 +1,12 @@
 import asyncio
 import re
+import requests
+import time
 
 import pandas as pd
 import arxiv
 from arxiv import SortOrder
+import atoma
 
 from arxiv_sanity_bot.altmetric.scores import gather_scores
 from arxiv_sanity_bot.config import (
@@ -13,7 +16,7 @@ from arxiv_sanity_bot.config import (
     ARXIV_MAX_PAGES,
     ARXIV_PAGE_SIZE,
 )
-from arxiv_sanity_bot.events import InfoEvent
+from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent, FatalErrorEvent
 from arxiv_sanity_bot.sanitize_text import sanitize_text
 
 
@@ -27,13 +30,8 @@ def get_all_abstracts(
     max_pages=ARXIV_MAX_PAGES,
     chunk_size=ARXIV_PAGE_SIZE,
 ) -> pd.DataFrame:
-    custom_client = arxiv.Client(
-        page_size=chunk_size,
-        delay_seconds=ARXIV_DELAY,
-        num_retries=ARXIV_NUM_RETRIES,
-    )
 
-    rows = _fetch_from_arxiv(after, chunk_size, custom_client, max_pages)
+    rows = _fetch_from_arxiv_2(after, chunk_size, max_pages)
 
     InfoEvent(msg=f"Fetched {len(rows)} abstracts from Arxiv")
 
@@ -59,7 +57,14 @@ def get_all_abstracts(
         return abstracts
 
 
-def _fetch_from_arxiv(after, chunk_size, custom_client, max_pages):
+def _fetch_from_arxiv(after, chunk_size, max_pages):
+
+    custom_client = arxiv.Client(
+        page_size=chunk_size,
+        delay_seconds=ARXIV_DELAY,
+        num_retries=ARXIV_NUM_RETRIES,
+    )
+
     rows = []
     for i, result in enumerate(
             custom_client.results(
@@ -95,3 +100,53 @@ def _fetch_scores(abstracts):
 
 def get_url(arxiv_id):
     return f"https://arxiv.org/abs/{arxiv_id}"
+
+
+def _fetch_from_arxiv_2(after, chunk_size, max_pages):
+
+    base_url = 'https://export.arxiv.org/api/query'
+
+    # Search parameters
+    search_query = ARXIV_QUERY
+
+    # Construct API query
+    query = f'search_query={search_query}&sortBy=submittedDate&sortOrder=descending&max_results={chunk_size*max_pages}'
+
+    # Fetch ATOM answer
+    response = _fetch_from_arxiv_api(base_url, query)
+
+    feed = atoma.parse_atom_bytes(response.content)
+
+    # Extract info
+    rows = []
+    for i, result in enumerate(
+            feed.entries
+    ):
+        if result.published < after:
+            InfoEvent(
+                msg=f"Breaking after {i} papers as published date was earlier than the window start"
+            )
+            break
+
+        rows.append(
+            {
+                "arxiv": _extract_arxiv_id(result.id_),
+                "title": sanitize_text(result.title.value),
+                "abstract": sanitize_text(result.summary.value),
+                "published_on": result.published,
+            }
+        )
+    return rows
+
+
+def _fetch_from_arxiv_api(base_url, query):
+    for _ in range(ARXIV_NUM_RETRIES):
+        try:
+            response = requests.get(f"{base_url}?{query}")
+        except Exception as e:
+            RetryableErrorEvent("Could not get results from arxiv.", context={'exception': str(e)})
+            time.sleep(ARXIV_DELAY)
+        else:
+            return response
+
+    FatalErrorEvent(f"Could not get results from arxiv after {ARXIV_NUM_RETRIES} trials")
