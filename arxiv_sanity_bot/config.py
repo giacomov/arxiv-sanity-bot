@@ -2,7 +2,7 @@
 from zoneinfo import ZoneInfo
 
 # Papers under this score will not be posted
-SCORE_THRESHOLD = 10
+SCORE_THRESHOLD = 5
 MAX_NUM_PAPERS = 10
 
 # Source for the abstracts
