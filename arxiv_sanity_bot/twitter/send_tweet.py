@@ -50,17 +50,7 @@ def send_tweet(
         auth.access_token_secret,
     )
 
-    api = tweepy.API(auth)
-
-    media_ids = []
-    if img_path is not None:
-        upload = twitter_autoretry(
-            lambda: api.simple_upload(img_path), "Could not upload image"
-        )
-
-        InfoEvent(msg=f"Uploaded image {img_path} as media_id {upload.media_id_string}")
-
-        media_ids.append(upload.media_id_string)
+    media_ids = _upload_image(auth, img_path)
 
     client = tweepy.Client(
         consumer_key=auth.consumer_key,
@@ -95,3 +85,18 @@ def send_tweet(
     tweet_id = response.data["id"] if response else None
 
     return tweet_url, tweet_id
+
+
+def _upload_image(auth, img_path):
+    api = tweepy.API(auth)
+    media_ids = []
+    if img_path is not None:
+        upload = twitter_autoretry(
+            lambda: api.simple_upload(img_path), "Could not upload image"
+        )
+
+        if upload is not None:
+            InfoEvent(msg=f"Uploaded image {img_path} as media_id {upload.media_id_string}")
+
+            media_ids.append(upload.media_id_string)
+    return media_ids
