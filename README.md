@@ -28,7 +28,7 @@ The code runs periodically as a [Github action](https://github.com/giacomov/arxi
 ### Notes
 
 * The icon for the bot was generated using Stable Diffusion
-* In order to accumulate enough signal for the Altmetric score, the bot considers only papers between 48 hours and 24 hours from the time the bot runs.
-* The bot avoids reposting the same paper multiple times by maintaining track of the posted tweets, exploiting the [cache action](https://github.com/marketplace/actions/cache).
+* In order to accumulate enough signal for the Altmetric score, the bot considers papers within a window going back a few days
+* The bot avoids reposting the same paper multiple times by maintaining track of the posted tweets, exploiting a Firebase database (free quota).
 * An automation set up on [Zapier](https://zapier.com/) takes each tweet and reposts it on LinkedIN.
 * All parameters governing the functioning of the bot are contained in the [config.py](https://github.com/giacomov/arxiv-sanity-bot/blob/main/arxiv_sanity_bot/config.py) module.
