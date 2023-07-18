@@ -22,7 +22,7 @@ If you don't use Twitter, you can also find the same tweets posted on [LinkedIn]
 
 ## How it works
 
-The code runs periodically as a [Github action](https://github.com/giacomov/arxiv-sanity-bot/blob/main/.github/workflows/run-arxiv-sanity-bot.yml) (so it runs on free compute here on Github). It fetches the last papers from [arxiv](https://arxiv.org), parses all the papers contained there extracting title, abstract and arxiv number, then sends the arxiv numbers to Altmetrics to collect the Altmetric score. After putting everything together in a pandas DataFrame, it sorts it by score, then sends the first results to ChatGPT for summarization using the OpenAI API. It then extracts the first image of the paper (if it exists). Each result is concatenated with a shortened version of its Arxiv-sanity link and then posted on Twitter, with the first image of the paper attached.
+The code runs periodically as a [Github action](https://github.com/giacomov/arxiv-sanity-bot/blob/main/.github/workflows/run-arxiv-sanity-bot.yml) (so it runs on free compute here on Github). It fetches the last papers from [arxiv](https://arxiv.org), parses all the papers contained there extracting title, abstract and arxiv number, then sends the arxiv numbers to Altmetrics to collect the Altmetric score. After putting everything together in a pandas DataFrame, it sorts it by score, then sends the first results to ChatGPT for summarization using the OpenAI API. It then extracts the first image of the paper (if it exists). Each result is concatenated with a shortened version of its Arxiv link and then posted on Twitter, with the first image of the paper attached.
 
 
 ### Notes
