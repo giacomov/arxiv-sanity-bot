@@ -113,7 +113,7 @@ def _search_first_image_in_pages(arxiv_id, pdf_reader):
         try:
             images = page.images
 
-        except pypdf.errors.PyPdfError:
+        except (pypdf.errors.PyPdfError, OSError):
             continue
 
         if len(images) > 0:
