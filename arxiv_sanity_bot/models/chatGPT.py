@@ -14,7 +14,7 @@ class ChatGPT(LLM):
     def summarize_abstract(self, abstract: str) -> str:
         summary = ""
 
-        for i in range(CHATGPT_N_TRIALS):
+        for _ in range(CHATGPT_N_TRIALS):
             history = [
                 {
                     "role": "system",
@@ -23,8 +23,8 @@ class ChatGPT(LLM):
                 },
                 {
                     "role": "user",
-                    "content": f"Summarize the following abstract in one short sentence: `{abstract}`. "
-                    "Do not include any hashtag",
+                    "content": f"Summarize the following abstract in one short tweet: `{abstract}`. "
+                    "Do not include any hashtag. Make sure to highlight the innovative contribution of the paper.",
                 },
             ]
 
@@ -73,7 +73,7 @@ class ChatGPT(LLM):
 
             try:
                 r = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo-0301",
+                    model="gpt-4-1106-preview",
                     messages=history,
                 )
             except Exception as e:
