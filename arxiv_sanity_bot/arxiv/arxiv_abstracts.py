@@ -122,11 +122,11 @@ def _fetch_from_arxiv_2(after, chunk_size, max_pages):
     for i, result in enumerate(
             feed.entries
     ):
-        if result.published < after:
-            InfoEvent(
-                msg=f"Breaking after {i} papers as published date was earlier than the window start"
-            )
-            break
+        # if result.published < after:
+        #     InfoEvent(
+        #         msg=f"Breaking after {i} papers as published date was earlier than the window start"
+        #     )
+        #     break
 
         rows.append(
             {
