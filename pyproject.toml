@@ -5,8 +5,8 @@ description = "A bot that reads papers from arxiv-sanity, summarizes them using 
 readme = "README.md"
 authors = [{"name" = "Giacomo Vianello"}]
 dependencies = [
-    "openai == 0.27.2",
-    "tweepy == 4.13.0",
+    "openai==0.27.2",
+    "tweepy==4.13.0",
     "pyshorteners == 1.0.1",
     "lxml==4.9.4",
     "requests-html == 0.10.0",
@@ -19,7 +19,8 @@ dependencies = [
     "PyMuPDF == 1.22.1",
     "firebase == 4.0.1",
     "firebase-admin == 6.1.0",
-    "atoma==0.0.17"
+    "atoma==0.0.17",
+    "numpy<2"
     ]
 
 [build-system]
