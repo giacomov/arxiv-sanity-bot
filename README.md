@@ -13,16 +13,14 @@ This repository contains the code for `arxiv-sanity-bot`, a system that:
 3. selects papers above a threshold
 4. sends them to ChatGPT for summarization using the [OpenAI API](https://platform.openai.com/docs/introduction)
 5. Extract the first image of the paper
-6. posts the results to [Twitter](https://twitter.com/arxivsanitybot) using [tweepy](https://www.tweepy.org/)
+6. posts the results to [X/Twitter](https://twitter.com/arxivsanitybot) using [tweepy](https://www.tweepy.org/)
 
 Clicking on the shortened URL in the tweet takes you to the arxiv page.
-
-If you don't use Twitter, you can also find the same tweets posted on [LinkedIn](https://www.linkedin.com/company/arxiv-sanity-bot/)
 
 
 ## How it works
 
-The code runs periodically as a [Github action](https://github.com/giacomov/arxiv-sanity-bot/blob/main/.github/workflows/run-arxiv-sanity-bot.yml) (so it runs on free compute here on Github). It fetches the last papers from [arxiv](https://arxiv.org), parses all the papers contained there extracting title, abstract and arxiv number, then sends the arxiv numbers to Altmetrics to collect the Altmetric score. After putting everything together in a pandas DataFrame, it sorts it by score, then sends the first results to ChatGPT for summarization using the OpenAI API. It then extracts the first image of the paper (if it exists). Each result is concatenated with a shortened version of its Arxiv link and then posted on Twitter, with the first image of the paper attached.
+The code runs periodically as a [Github action](https://github.com/giacomov/arxiv-sanity-bot/blob/main/.github/workflows/run-arxiv-sanity-bot.yml) (so it runs on free compute here on Github). It fetches the last papers from [arxiv](https://arxiv.org), parses all the papers contained there extracting title, abstract and arxiv number, then sends the arxiv numbers to Altmetrics to collect the Altmetric score. After putting everything together in a pandas DataFrame, it sorts it by score, then sends the first results to ChatGPT for summarization using the OpenAI API. It then extracts the first image of the paper (if it exists). Each result is concatenated with a shortened version of its Arxiv link and then posted on X/Twitter, with the first image of the paper attached.
 
 
 ### Notes
@@ -30,5 +28,4 @@ The code runs periodically as a [Github action](https://github.com/giacomov/arxi
 * The icon for the bot was generated using Stable Diffusion
 * In order to accumulate enough signal for the Altmetric score, the bot considers papers within a window going back a few days
 * The bot avoids reposting the same paper multiple times by maintaining track of the posted tweets, exploiting a Firebase database (free quota).
-* An automation set up on [Zapier](https://zapier.com/) takes each tweet and reposts it on LinkedIN.
 * All parameters governing the functioning of the bot are contained in the [config.py](https://github.com/giacomov/arxiv-sanity-bot/blob/main/arxiv_sanity_bot/config.py) module.
