@@ -18,14 +18,15 @@ class ChatGPT(LLM):
             history = [
                 {
                     "role": "system",
-                    "content": f"You are a twitter chat bot. You can only answer with a maximum of "
-                    f"{TWEET_TEXT_LENGTH} characters",
+                    "content": f"You are a twitter chat bot. Write engaging tweets with a maximum length of "
+                    f"{TWEET_TEXT_LENGTH} characters. Be concise, informative, and engaging.",
                 },
                 {
                     "role": "user",
                     "content": f"Summarize the following abstract in one short tweet: `{abstract}`. "
                     "Do not include any hashtag. Make sure to highlight the innovative contribution of the paper. "
-                    "Use the third person when referring to the authors",
+                    f"Use the third person when referring to the authors. Use {TWEET_TEXT_LENGTH} or less "
+                    "characters.",
                 },
             ]
 
