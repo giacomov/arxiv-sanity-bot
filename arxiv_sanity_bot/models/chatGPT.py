@@ -77,6 +77,7 @@ class ChatGPT(LLM):
                 r = openai.ChatCompletion.create(
                     model="gpt-4o-2024-08-06",
                     messages=history,
+                    max_completion_tokens=63,  # Around 255 characters
                 )
             except Exception as e:
                 RetryableErrorEvent(
