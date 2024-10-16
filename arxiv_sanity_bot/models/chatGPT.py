@@ -40,6 +40,12 @@ class ChatGPT(LLM):
                     msg=f"Summary was {len(summary)} characters long instead of {TWEET_TEXT_LENGTH}.",
                     context={"abstract": abstract, "this_summary": summary},
                 )
+                history.append(
+                    {
+                        "role": "user",
+                        "content": f"The tweet was too long ({len(summary)} characters). Make it a little shorter."
+                    }
+                )
         else:
             FatalErrorEvent(
                 msg=f"ChatGPT could not successfully generate a tweet after {CHATGPT_N_TRIALS}",
@@ -48,7 +54,9 @@ class ChatGPT(LLM):
 
         return summary
 
-    def generate_bot_summary(self, n_papers_considered: int, n_papers_reported: int):
+    def generate_bot_summary(
+        self, n_papers_considered: int, n_papers_reported: int
+    ):
         # Generate a fun variation of the following phrase using ChatGPT
         original_sentence = (
             f"In this round I considered {n_papers_considered} abstracts and selected "
@@ -60,8 +68,8 @@ class ChatGPT(LLM):
             {
                 "role": "user",
                 "content": f"Generate an engaging variation of the following sentence, "
-                           f"but avoid sounding too human (you are a bot!): "
-                           f"{original_sentence}",
+                f"but avoid sounding too human (you are a bot!): "
+                f"{original_sentence}",
             },
         ]
 
@@ -95,4 +103,3 @@ class ChatGPT(LLM):
             FatalErrorEvent(
                 msg=f"Calling ChatGPT failed after {CHATGPT_N_TRIALS} attempts"
             )
-
