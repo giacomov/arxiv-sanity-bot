@@ -1,3 +1,4 @@
+import json
 import time
 
 from arxiv_sanity_bot.events import RetryableErrorEvent, FatalErrorEvent
@@ -11,24 +12,29 @@ import openai
 
 
 class ChatGPT(LLM):
+
+    def __init__(self):
+        self._client = openai.OpenAI()
+
     def summarize_abstract(self, abstract: str) -> str:
         summary = ""
 
+        history = [
+            {
+                "role": "system",
+                "content": f"You are a twitter chat bot. Write engaging tweets with a maximum length of "
+                f"{TWEET_TEXT_LENGTH} characters. Be concise, informative, and engaging.",
+            },
+            {
+                "role": "user",
+                "content": f"Summarize the following abstract in one short tweet: `{abstract}`. "
+                "Do not include any hashtag. Make sure to highlight the innovative contribution of the paper. "
+                f"Use the third person when referring to the authors. Use {TWEET_TEXT_LENGTH} or less "
+                "characters.",
+            },
+        ]
+
         for _ in range(CHATGPT_N_TRIALS):
-            history = [
-                {
-                    "role": "system",
-                    "content": f"You are a twitter chat bot. Write engaging tweets with a maximum length of "
-                    f"{TWEET_TEXT_LENGTH} characters. Be concise, informative, and engaging.",
-                },
-                {
-                    "role": "user",
-                    "content": f"Summarize the following abstract in one short tweet: `{abstract}`. "
-                    "Do not include any hashtag. Make sure to highlight the innovative contribution of the paper. "
-                    f"Use the third person when referring to the authors. Use {TWEET_TEXT_LENGTH} or less "
-                    "characters.",
-                },
-            ]
 
             summary = self._call_chatgpt(history)
 
@@ -40,11 +46,14 @@ class ChatGPT(LLM):
                     msg=f"Summary was {len(summary)} characters long instead of {TWEET_TEXT_LENGTH}.",
                     context={"abstract": abstract, "this_summary": summary},
                 )
-                history.append(
-                    {
-                        "role": "user",
-                        "content": f"The tweet was too long ({len(summary)} characters). Make it a little shorter."
-                    }
+                history.extend(
+                    [
+                        {"role": "assistant", "content": summary},
+                        {
+                            "role": "user",
+                            "content": f"The tweet was too long ({len(summary)} characters). Make it a little shorter.",
+                        },
+                    ]
                 )
         else:
             FatalErrorEvent(
@@ -77,15 +86,16 @@ class ChatGPT(LLM):
 
         return sentence
 
-    @staticmethod
-    def _call_chatgpt(history):
+    def _call_chatgpt(self, history):
         for i in range(CHATGPT_N_TRIALS):
 
             try:
-                r = openai.ChatCompletion.create(
-                    model="gpt-4o-2024-08-06",
+                print(json.dumps(history, indent=4))
+
+                completion = self._client.chat.completions.create(
+                    model="gpt-4o",
                     messages=history,
-                    max_completion_tokens=62,  # Around 255 characters
+                    max_completion_tokens=62,  # around 250 characters
                 )
             except Exception as e:
                 RetryableErrorEvent(
@@ -95,7 +105,7 @@ class ChatGPT(LLM):
                 time.sleep(CHATGPT_SLEEP_TIME)
                 continue
             else:
-                sentence = r["choices"][0]["message"]["content"].strip()
+                sentence = completion.choices[0].message.content.strip()
                 return sentence
 
         else:

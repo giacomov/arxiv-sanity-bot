@@ -5,7 +5,7 @@ description = "A bot that reads papers from arxiv-sanity, summarizes them using 
 readme = "README.md"
 authors = [{"name" = "Giacomo Vianello"}]
 dependencies = [
-    "openai==0.27.2",
+    "openai==1.51.2",
     "tweepy==4.13.0",
     "pyshorteners == 1.0.1",
     "lxml==4.9.4",
