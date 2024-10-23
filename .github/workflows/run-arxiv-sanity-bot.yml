@@ -7,7 +7,7 @@ on:
     inputs:
       window_start:
         description: "Start of the window in days. Ex. 48 means that the window starts 48 hours ago"
-        default: "72"
+        default: "96"
         type: "string"
       window_stop:
         description: "Stop of the window in days. Ex. 24 means that the window stops 24 hours ago"
