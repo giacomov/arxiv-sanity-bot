@@ -29,3 +29,4 @@ The code runs periodically as a [Github action](https://github.com/giacomov/arxi
 * In order to accumulate enough signal for the Altmetric score, the bot considers papers within a window going back a few days
 * The bot avoids reposting the same paper multiple times by maintaining track of the posted tweets, exploiting a Firebase database (free quota).
 * All parameters governing the functioning of the bot are contained in the [config.py](https://github.com/giacomov/arxiv-sanity-bot/blob/main/arxiv_sanity_bot/config.py) module.
+
