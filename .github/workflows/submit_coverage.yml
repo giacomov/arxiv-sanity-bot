@@ -27,6 +27,7 @@ jobs:
 
     - name: Run tests
       run: |
+        export OPENAI_API_KEY="need-to-be-here"
         ci/run_tests.sh
 
     - name: Submit coverage
