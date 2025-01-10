@@ -11,7 +11,7 @@ This repository contains the code for `arxiv-sanity-bot`, a system that:
 1. takes the most recent AI/ML papers from [arxiv](https://arxiv.org)
 2. ranks them by [Altmetric score](https://api.altmetric.com/docs/call_arxiv.html)
 3. selects papers above a threshold
-4. sends them to ChatGPT for summarization using the [OpenAI API](https://platform.openai.com/docs/introduction)
+4. sends them to GPT-4o for summarization using the [OpenAI API](https://platform.openai.com/docs/introduction)
 5. Extract the first image of the paper
 6. posts the results to [X/Twitter](https://twitter.com/arxivsanitybot) using [tweepy](https://www.tweepy.org/)
 
@@ -20,7 +20,7 @@ Clicking on the shortened URL in the tweet takes you to the arxiv page.
 
 ## How it works
 
-The code runs periodically as a [Github action](https://github.com/giacomov/arxiv-sanity-bot/blob/main/.github/workflows/run-arxiv-sanity-bot.yml) (so it runs on free compute here on Github). It fetches the last papers from [arxiv](https://arxiv.org), parses all the papers contained there extracting title, abstract and arxiv number, then sends the arxiv numbers to Altmetrics to collect the Altmetric score. After putting everything together in a pandas DataFrame, it sorts it by score, then sends the first results to ChatGPT for summarization using the OpenAI API. It then extracts the first image of the paper (if it exists). Each result is concatenated with a shortened version of its Arxiv link and then posted on X/Twitter, with the first image of the paper attached.
+The code runs periodically as a [Github action](https://github.com/giacomov/arxiv-sanity-bot/blob/main/.github/workflows/run-arxiv-sanity-bot.yml) (so it runs on free compute here on Github). It fetches the last papers from [arxiv](https://arxiv.org), parses all the papers contained there extracting title, abstract and arxiv number, then sends the arxiv numbers to Altmetrics to collect the Altmetric score. After putting everything together in a pandas DataFrame, it sorts it by score, then sends the first results to GPT-4o for summarization using the OpenAI API. It then extracts the first image of the paper (if it exists). Each result is concatenated with a shortened version of its Arxiv link and then posted on X/Twitter, with the first image of the paper attached.
 
 
 ### Notes
