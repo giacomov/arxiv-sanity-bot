@@ -28,7 +28,7 @@ class ChatGPT(LLM):
             {
                 "role": "user",
                 "content": f"Summarize the following abstract in one short tweet: `{abstract}`. "
-                "Do not include any hashtag. Make sure to highlight the innovative contribution of the paper. "
+                "Do not include any hashtag or emojis. Make sure to highlight the innovative contribution of the paper. "
                 f"Use the third person when referring to the authors. Use {TWEET_TEXT_LENGTH} or less "
                 "characters.",
             },

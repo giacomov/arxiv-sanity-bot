@@ -4,6 +4,10 @@ import random
 import click
 import pandas as pd
 import pyshorteners
+
+import dotenv
+dotenv.load_dotenv()
+
 import requests.exceptions
 
 from arxiv_sanity_bot.arxiv_sanity import arxiv_sanity_abstracts
