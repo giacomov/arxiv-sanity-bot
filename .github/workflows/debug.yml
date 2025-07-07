@@ -1,4 +1,4 @@
-name: Run Arxiv Sanity Bot
+name: Debug
 
 on:
   schedule:
