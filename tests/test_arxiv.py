@@ -28,63 +28,57 @@ def test_extract_arxiv_id():
     assert _extract_arxiv_id("http://arxiv.org/abs/99.99") == "99.99"
 
 
-def test_get_all_abstracts(mock_arxiv_client):
-    # Mock the arxiv search results
-    mock_entry = Mock()
-    mock_entry.entry_id = "https://arxiv.org/abs/2101.12345v2"
-    mock_entry.title = "Sample Title"
-    mock_entry.summary = "Sample abstract with some & special % characters."
-    mock_entry.published = pd.to_datetime("2021-01-01T00:00:00Z")
-
-    mock_result = MagicMock()
-    mock_result.__iter__.return_value = [mock_entry]
-
-    mock_arxiv_client.return_value.results.return_value = mock_result
-
-    with mock.patch(
-        "arxiv_sanity_bot.arxiv.arxiv_abstracts._fetch_scores"
-    ) as mock_fetch_scores:
-
-        with mock.patch(
-                "arxiv_sanity_bot.arxiv.arxiv_abstracts._fetch_from_arxiv_2"
-        ) as mock_fetch_from_arxiv_2:
-
-            mock_fetch_from_arxiv_2.return_value = [
-                {
-                    "arxiv": "2101.12345",
-                    "title": "Sample Title",
-                    "abstract": sanitize_text("Sample abstract with some & special % characters."),
-                    "published_on": pd.to_datetime("2021-01-01T00:00:00Z"),
-                }
-            ]
-
-            mock_fetch_scores.return_value = pd.DataFrame(
-                [
-                    {
-                        "arxiv": "2101.12345",
-                        "score": 9.0,
-                        "published_on": pd.to_datetime("2021-01-01T00:00:00Z"),
-                    }
-                ]
-            )
-
-            abstracts = get_all_abstracts(
-                max_pages=1,
-                after=pd.to_datetime("2020-12-31T00:00:00Z"),
-                before=pd.to_datetime("2021-12-31T00:00:00Z"),
-            )
-
-    assert isinstance(abstracts, pd.DataFrame)
-    assert len(abstracts) == 1
-    assert abstracts.iloc[0]["arxiv"] == "2101.12345"
-    assert abstracts.iloc[0]["title"] == "Sample Title"
-    assert (
-        abstracts.iloc[0]["abstract"] == "Sample abstract with some special characters."
-    )
-
-
 def test_get_url():
     arxiv_id = "2101.12345"
     expected_url = "https://arxiv.org/abs/2101.12345"
 
     assert get_url(arxiv_id) == expected_url
+
+
+def test_get_all_abstracts():
+    from datetime import datetime, timezone
+
+    after = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    before = datetime(2024, 1, 2, tzinfo=timezone.utc)
+    
+    # Mock the internal fetch function to return test data
+    mock_rows = [
+        {
+            'arxiv': '2401.00001',
+            'title': 'Test Paper 1',
+            'abstract': 'Test abstract 1',
+            'published_on': '2024-01-01T10:00:00Z',
+            'categories': ['cs.LG']
+        },
+        {
+            'arxiv': '2401.00002', 
+            'title': 'Test Paper 2',
+            'abstract': 'Test abstract 2',
+            'published_on': '2024-01-01T15:00:00Z',
+            'categories': ['cs.CV']
+        }
+    ]
+    
+    # Mock the internal functions
+    with patch('arxiv_sanity_bot.arxiv.arxiv_abstracts._fetch_from_arxiv_3', return_value=mock_rows), \
+         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts._fetch_scores', return_value=pd.DataFrame({
+             'arxiv': ['2401.00001', '2401.00002'], 
+             'score': [0.8, 0.9]
+         })):
+        
+        result = get_all_abstracts(after, before)
+        
+        # Test external functionality
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 2
+        assert 'arxiv' in result.columns
+        assert 'title' in result.columns
+        assert 'abstract' in result.columns
+        assert 'published_on' in result.columns
+        assert 'score' in result.columns
+        
+        # Check that results are sorted by score (descending)
+        assert result.iloc[0]['score'] >= result.iloc[1]['score']
+        
+        # Check that published_on is datetime
+        assert pd.api.types.is_datetime64_any_dtype(result['published_on'])
