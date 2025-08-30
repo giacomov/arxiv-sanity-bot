@@ -1,35 +1,38 @@
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import pytest
 
 from arxiv_sanity_bot.models.chatGPT import ChatGPT
 
-# Sample response from OpenAI API
-sample_response = {"choices": [{"message": {"content": "This is a sample summary."}}]}
-
 
 def test_summarize_abstract():
-    chatgpt = ChatGPT()
     abstract = "This is a sample abstract."
     expected_summary = "This is a sample summary."
 
-    with patch("openai.ChatCompletion.create", return_value=sample_response):
-        # Test if the summary is generated as expected
+    mock_completion = Mock()
+    mock_completion.choices = [Mock()]
+    mock_completion.choices[0].message.content = expected_summary
+
+    with patch("openai.OpenAI") as mock_openai:
+        mock_client = Mock()
+        mock_client.chat.completions.create.return_value = mock_completion
+        mock_openai.return_value = mock_client
+        
+        chatgpt = ChatGPT()
         summary = chatgpt.summarize_abstract(abstract)
         assert summary == expected_summary
 
-    # Test the case where the model produces a long summary
-    long_summary_response = {
-        "choices": [
-            {
-                "message": {
-                    "content": "This is a sample summary that is too long for a tweet."
-                    * 10
-                }
-            }
-        ]
-    }
+    # Test long summary case
+    long_summary = "This is a sample summary that is too long for a tweet." * 10
+    mock_long_completion = Mock()
+    mock_long_completion.choices = [Mock()]
+    mock_long_completion.choices[0].message.content = long_summary
 
-    with patch("openai.ChatCompletion.create", return_value=long_summary_response):
+    with patch("openai.OpenAI") as mock_openai:
+        mock_client = Mock()
+        mock_client.chat.completions.create.return_value = mock_long_completion
+        mock_openai.return_value = mock_client
+        
+        chatgpt = ChatGPT()
         with pytest.raises(SystemExit):
-            _ = chatgpt.summarize_abstract(abstract)
+            chatgpt.summarize_abstract(abstract)
