@@ -75,14 +75,8 @@ def test_extract_first_image_only_graph(paper_with_only_graph):
         assert image is not None
 
         assert os.path.exists(image)
+        assert image == "two_image1.jpg"
 
-        # There should be only the graph
-        assert os.path.exists("graph-two-page0.png")
-
-        check_image_content(
-            new_image="graph-two-page0.png",
-            reference_image_path=get_resource("graph-two-page0.png"),
-        )
         check_image_content(
             new_image=image, reference_image_path=get_resource("two_image1.jpg")
         )
@@ -99,12 +93,8 @@ def test_extract_first_image_both_bitmap_and_graph(paper_with_both_graph_and_bit
         assert image is not None
 
         assert os.path.exists(image)
-        assert os.path.exists("three_first_image.png")
+        assert image == "three_image1.jpg"
 
-        check_image_content(
-            new_image="three_first_image.png",
-            reference_image_path=get_resource("three_first_image.png"),
-        )
         check_image_content(
             new_image=image, reference_image_path=get_resource("three_image1.jpg")
         )
