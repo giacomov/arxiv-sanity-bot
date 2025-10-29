@@ -3,12 +3,9 @@ import time
 import random
 import click
 import pandas as pd
-import pyshorteners
 
 import dotenv
 dotenv.load_dotenv()
-
-import requests.exceptions
 
 from arxiv_sanity_bot.arxiv_sanity import arxiv_sanity_abstracts
 from arxiv_sanity_bot.arxiv import arxiv_abstracts
@@ -82,9 +79,16 @@ def send_tweets(n_retrieved, summaries, doc_store, dry):
 
         this_url, this_tweet_id = tweet_sender(
             s["tweet"], auth=oauth, img_path=s["image"]
-        )  # , in_reply_to_tweet_id=tweet_id
+        )
 
         if this_url is not None:
+            if s["url"]:
+                InfoEvent(msg=f"Sending URL as reply to tweet {this_tweet_id}")
+                time.sleep(2)
+                tweet_sender(
+                    s["url"], auth=oauth, in_reply_to_tweet_id=this_tweet_id
+                )
+
             doc_store[s["arxiv"]] = {
                 "tweet_id": this_tweet_id,
                 "tweet_url": this_url,
@@ -113,7 +117,7 @@ def _summarize_top_abstracts(selected_abstracts):
     summaries = []
 
     for i, row in selected_abstracts.iloc[:MAX_NUM_PAPERS].iterrows():
-        summary, short_url, img_path = _summarize(row)
+        summary, url, img_path = _summarize(row)
 
         if summary is not None:
             summaries.append(
@@ -123,7 +127,8 @@ def _summarize_top_abstracts(selected_abstracts):
                     "score": row["score"],
                     "published_on": row["published_on"],
                     "image": img_path,
-                    "tweet": f"{short_url} {summary}",
+                    "tweet": summary,
+                    "url": url,
                 }
             )
 
@@ -132,36 +137,20 @@ def _summarize_top_abstracts(selected_abstracts):
 
 def _summarize(row):
     chatGPT = ChatGPT()
-    s = pyshorteners.Shortener(timeout=20)
 
     summary = chatGPT.summarize_abstract(row["abstract"])
 
-    for _ in range(10):
-        # Remove the 'http://' part which is useless and consumes characters
-        # for nothing
-        url = _SOURCES[SOURCE].get_url(row["arxiv"])
-        try:
-            short_url = s.tinyurl.short(url).split("//")[-1]
-        except requests.exceptions.Timeout as e:
-            RetryableErrorEvent(
-                msg="Could not shorten URL", context={"url": url, "error": str(e)}
-            )
-            time.sleep(10)
-            continue
-        else:
-            InfoEvent(
-                msg=f"Processed abstract for {url}",
-                context={"title": row["title"], "score": row["score"]},
-            )
-            break
-    else:
-        InfoEvent("Could not shorten URL. Dropping it from the tweet!")
-        short_url = ""
+    url = _SOURCES[SOURCE].get_url(row["arxiv"])
+
+    InfoEvent(
+        msg=f"Processed abstract for {url}",
+        context={"title": row["title"], "score": row["score"]},
+    )
 
     # Get image from the first page
     img_path = extract_first_image(row["arxiv"])
 
-    return summary, short_url, img_path
+    return summary, url, img_path
 
 
 def _gather_abstracts(window_start, window_stop):

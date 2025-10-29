@@ -69,7 +69,6 @@ dependencies = [
     { name = "pandas" },
     { name = "pymupdf" },
     { name = "pypdf", extra = ["image"] },
-    { name = "pyshorteners" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "requests-html" },
@@ -103,7 +102,6 @@ requires-dist = [
     { name = "pandas" },
     { name = "pymupdf" },
     { name = "pypdf", extras = ["image"] },
-    { name = "pyshorteners" },
     { name = "pytest", marker = "extra == 'test'" },
     { name = "pytest-asyncio", marker = "extra == 'test'" },
     { name = "pytest-cov", marker = "extra == 'test'" },
@@ -1516,15 +1514,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/ae/48/79e774ea00b671d08
 wheels = [
     { url = "https://files.pythonhosted.org/packages/76/f5/5067b48012967ea166b9bd0a015b69e0560e4c6e7c06f28d9bab8f9dd10b/pyquery-2.0.1-py3-none-any.whl", hash = "sha256:aedfa0bd0eb9afc94b3ddbec8f375a6362b32bc9662f46e3e0d866483f4771b0", size = 22573, upload-time = "2024-08-30T08:12:22.586Z" },
 ]
-
-[[package]]
-name = "pyshorteners"
-version = "1.0.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/80/13/7dd5f53ac009775e18861f41efadf78160e1015c84a476d373957cb63b5c/pyshorteners-1.0.1.tar.gz", hash = "sha256:22045c997c4283124768c165623a267cf9ba2a7d416101e2e5fccfc244d34544", size = 9952, upload-time = "2020-03-19T17:54:24.83Z" }
 
 [[package]]
 name = "pytest"
