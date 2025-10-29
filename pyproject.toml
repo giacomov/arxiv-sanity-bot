@@ -8,7 +8,6 @@ requires-python = ">=3.12"
 dependencies = [
     "openai",
     "tweepy",
-    "pyshorteners",
     "lxml[html_clean]",
     "requests-html",
     "pyyaml",
