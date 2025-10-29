@@ -4,6 +4,7 @@ import pypdf
 import pypdf.errors
 import arxiv
 import os
+from PIL import Image
 
 from arxiv_sanity_bot.arxiv.extract_graph import extract_graph
 from arxiv_sanity_bot.config import ARXIV_NUM_RETRIES
@@ -39,14 +40,20 @@ def extract_first_image(arxiv_id: str, pdf_path: str = None):
     )
 
     if filename is not None:
-        ext = os.path.splitext(filename)[-1]
-        new_filename = f"{arxiv_id}_image1{ext}"
-        shutil.copy(filename, new_filename)
-
+        new_filename = f"{arxiv_id}_image1.jpg"
+        _convert_to_jpeg(filename, new_filename)
         return new_filename
 
     else:
         return None
+
+
+def _convert_to_jpeg(input_path, output_path):
+    with Image.open(input_path) as img:
+        max_size = 500
+        if max(img.size) > max_size:
+            img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+        img.convert("RGB").save(output_path, "JPEG", quality=85)
 
 
 def select_first_image(graph_file, graph_page_number, image_file, image_page_number):

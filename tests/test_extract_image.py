@@ -61,7 +61,7 @@ def test_extract_first_image_no_image_nor_graph(paper_with_no_figures):
         # Check if the image is not None
         assert image is None
 
-        assert len(glob.glob("one_*.png")) == 0
+        assert len(glob.glob("one_*.jpg")) == 0
 
 
 def test_extract_first_image_only_graph(paper_with_only_graph):
@@ -84,7 +84,7 @@ def test_extract_first_image_only_graph(paper_with_only_graph):
             reference_image_path=get_resource("graph-two-page0.png"),
         )
         check_image_content(
-            new_image=image, reference_image_path=get_resource("graph-two-page0.png")
+            new_image=image, reference_image_path=get_resource("two_image1.jpg")
         )
 
 
@@ -106,7 +106,7 @@ def test_extract_first_image_both_bitmap_and_graph(paper_with_both_graph_and_bit
             reference_image_path=get_resource("three_first_image.png"),
         )
         check_image_content(
-            new_image=image, reference_image_path=get_resource("three_first_image.png")
+            new_image=image, reference_image_path=get_resource("three_image1.jpg")
         )
 
 
