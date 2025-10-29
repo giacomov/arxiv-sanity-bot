@@ -4,24 +4,25 @@ version = "1.0.0"
 description = "A bot that reads papers from arxiv-sanity, summarizes them using ChatGPT and post them on Twitter"
 readme = "README.md"
 authors = [{"name" = "Giacomo Vianello"}]
+requires-python = ">=3.12"
 dependencies = [
-    "openai==1.51.2",
-    "tweepy==4.13.0",
-    "pyshorteners == 1.0.1",
-    "lxml==4.9.4",
-    "requests-html == 0.10.0",
-    "pyyaml == 6.0",
-    "pandas == 2.0.0",
-    "httpx == 0.24.0",
-    "click == 8.1.3",
-    "arxiv == 2.2.0",
-    "pypdf[image] == 3.8.0",
-    "PyMuPDF == 1.22.1",
-    "firebase == 4.0.1",
-    "firebase-admin == 6.1.0",
-    "atoma==0.0.17",
-    "numpy<2",
-    "dotenv==0.9.9",
+    "openai",
+    "tweepy",
+    "pyshorteners",
+    "lxml[html_clean]",
+    "requests-html",
+    "pyyaml",
+    "pandas",
+    "httpx",
+    "click",
+    "arxiv",
+    "pypdf[image]",
+    "PyMuPDF",
+    "firebase",
+    "firebase-admin",
+    "atoma",
+    "numpy",
+    "python-dotenv",
     ]
 
 [build-system]
@@ -30,12 +31,12 @@ build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
 test = [
-    "pytest==7.3.0",
-    "coverage==7.2.2",
-    "pytest-asyncio==0.21.0",
-    "pytest-cov==4.0.0",
-    "mock-firestore==0.11.0",
-    "freezegun==1.5.5"
+    "pytest",
+    "coverage",
+    "pytest-asyncio",
+    "pytest-cov",
+    "mock-firestore",
+    "freezegun"
 ]
 
 #[options.entry_points]

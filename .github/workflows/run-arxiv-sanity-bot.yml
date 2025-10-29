@@ -24,21 +24,18 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: '3.12'
 
-    - name: Cache parquet dataframe of processed abstracts
-      uses: actions/cache@v3
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
       with:
-        key: arxiv-sanity-bot-cache
-        path: |
-          posted_abstracts.parquet
-          ~/.cache/pip
+        enable-cache: true
 
     - name: Install dependencies
       run: |
-        pip install .
+        uv sync
 
     - name: Run Arxiv Sanity Bot
       env:
@@ -50,9 +47,9 @@ jobs:
         FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
       run: |
         if [ ${{ inputs.window_start }} != "" ]; then
-            arxiv-sanity-bot --window_start ${{ inputs.window_start }} --window_stop ${{ inputs.window_stop }}
-        else 
-        
+            uv run arxiv-sanity-bot --window_start ${{ inputs.window_start }} --window_stop ${{ inputs.window_stop }}
+        else
+
             if [ $(date +%a) == "Mon" ]; then
               echo "Setting window_start to 96 because it is Monday"
               export WINDOW_START=96
@@ -60,8 +57,8 @@ jobs:
               echo "Setting window_start to 72"
               export WINDOW_START=72
             fi
-        
-            arxiv-sanity-bot --window_start $WINDOW_START --window_stop -24
-        
+
+            uv run arxiv-sanity-bot --window_start $WINDOW_START --window_stop -24
+
         fi
        

@@ -69,7 +69,7 @@ def _union_all_rectangles(new_rects):
 
     x0, x1, y0, y1 = _regularize_box(x0, x1, y0, y1)
 
-    return fitz.fitz.Rect(x0, y0, x1, y1)
+    return fitz.Rect(x0, y0, x1, y1)
 
 
 def _regularize_box(x0, x1, y0, y1):

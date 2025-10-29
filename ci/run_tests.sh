@@ -1,5 +1,5 @@
 #!/bin/bash -e
 
-pip install ".[test]"
-coverage run -m pytest -vv tests/
-coverage report
+uv sync --all-extras
+uv run coverage run -m pytest -vv tests/
+uv run coverage report

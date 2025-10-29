@@ -24,7 +24,7 @@ from arxiv_sanity_bot.sanitize_text import sanitize_text
 
 
 def _extract_arxiv_id(entry_id):
-    return re.match(".+abs/([0-9\.]+)(v[0-9]+)?", entry_id).groups()[0]
+    return re.match(r".+abs/([0-9\.]+)(v[0-9]+)?", entry_id).groups()[0]
 
 
 def get_all_abstracts(
@@ -105,44 +105,6 @@ def get_url(arxiv_id):
     return f"https://arxiv.org/abs/{arxiv_id}"
 
 
-def _fetch_from_arxiv_2(after, chunk_size, max_pages):
-
-    base_url = 'https://export.arxiv.org/api/query'
-
-    # Search parameters
-    search_query = ARXIV_QUERY
-
-    # Construct API query
-    query = f'search_query={search_query}&sortBy=submittedDate&sortOrder=descending&max_results={chunk_size*max_pages}'
-
-    # Fetch ATOM answer
-    response = _fetch_from_arxiv_api(base_url, query)
-
-    feed = atoma.parse_atom_bytes(response.content)
-
-    # Extract info
-    rows = []
-    for i, result in enumerate(
-            feed.entries
-    ):
-        # if result.published < after:
-        #     InfoEvent(
-        #         msg=f"Breaking after {i} papers as published date was earlier than the window start"
-        #     )
-        #     break
-
-        rows.append(
-            {
-                "arxiv": _extract_arxiv_id(result.id_),
-                "title": sanitize_text(result.title.value),
-                "abstract": sanitize_text(result.summary.value),
-                "published_on": result.published,
-            }
-        )
-    return rows
-
-
-# def _fetch_from_arxiv_3(after, chunk_size, max_pages):
 def _fetch_from_arxiv_3(after_date, before_date, max_results=1000):
     """Original API method - kept as backup"""
     categories = "cat:cs.CV OR cat:cs.LG OR cat:cs.CL OR cat:cs.AI OR cat:cs.NE OR cat:cs.RO"

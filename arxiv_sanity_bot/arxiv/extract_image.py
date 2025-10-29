@@ -118,22 +118,24 @@ def _search_first_image_in_pages(arxiv_id, pdf_reader):
 
         if len(images) > 0:
             filename = _save_first_image(arxiv_id, page)
-
-            break
+            if filename is not None:
+                break
 
     return filename, page_number
 
 
 def _save_first_image(arxiv_id, page):
-    first_image = page.images[0]
-    InfoEvent(f"Found first bitmap image for {arxiv_id}")
-    # Write the image data and caption text to files
-    extension = os.path.splitext(first_image.name)[-1]
-    filename = f"{arxiv_id}_first_image{extension}"
-    with open(filename, "wb") as image_file:
-        image_file.write(first_image.data)
-    InfoEvent(f"Bitmap image saved in {filename}")
-    return filename
+    for image in page.images:
+        if len(image.data) < 1024:
+            continue
+        InfoEvent(f"Found first bitmap image for {arxiv_id}")
+        extension = os.path.splitext(image.name)[-1]
+        filename = f"{arxiv_id}_first_image{extension}"
+        with open(filename, "wb") as image_file:
+            image_file.write(image.data)
+        InfoEvent(f"Bitmap image saved in {filename}")
+        return filename
+    return None
 
 
 def download_paper(arxiv_id):
