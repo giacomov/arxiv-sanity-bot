@@ -33,7 +33,7 @@ CHATGPT_SLEEP_TIME = 10
 
 # The url length depens on the url shortener used. For tinyurl is 18 if
 # we remove https://
-URL_LENGTH = 20
+URL_LENGTH = 0
 TWEET_TEXT_LENGTH = 275 - URL_LENGTH
 # How many times to try to send a tweet before failing
 TWITTER_N_TRIALS = 10
