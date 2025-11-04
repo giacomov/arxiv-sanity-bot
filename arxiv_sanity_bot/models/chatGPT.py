@@ -93,7 +93,7 @@ class ChatGPT(LLM):
                 print(json.dumps(history, indent=4))
 
                 completion = self._client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-5-nano-2025-08-07",
                     messages=history,
                     max_completion_tokens=62,  # around 250 characters
                 )
