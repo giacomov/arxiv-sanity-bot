@@ -23,14 +23,13 @@ class ChatGPT(LLM):
             {
                 "role": "system",
                 "content": f"You are a twitter chat bot. Write engaging tweets with a maximum length of "
-                f"{TWEET_TEXT_LENGTH} characters. Be concise, informative, and engaging.",
+                f"255 characters. Be concise, informative, and engaging.",
             },
             {
                 "role": "user",
                 "content": f"Summarize the following abstract in one short tweet: `{abstract}`. "
                 "Do not include any hashtag or emojis. Make sure to highlight the innovative contribution of the paper. "
-                f"Use the third person when referring to the authors. Use {TWEET_TEXT_LENGTH} or less "
-                "characters.",
+                f"Use the third person when referring to the authors. Use 255 characters or less.",
             },
         ]
 
@@ -93,9 +92,8 @@ class ChatGPT(LLM):
                 print(json.dumps(history, indent=4))
 
                 completion = self._client.chat.completions.create(
-                    model="gpt-5-nano-2025-08-07",
+                    model="gpt-5-mini",
                     messages=history,
-                    max_completion_tokens=62,  # around 250 characters
                 )
             except Exception as e:
                 RetryableErrorEvent(
