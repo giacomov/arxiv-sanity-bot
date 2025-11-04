@@ -6,12 +6,12 @@ on:
   workflow_dispatch:
     inputs:
       window_start:
-        description: "Start of the window in days. Ex. 48 means that the window starts 48 hours ago"
+        description: "Start of the window in hours. Ex. 48 means that the window starts 48 hours ago"
         default: "96"
         type: "string"
       window_stop:
-        description: "Stop of the window in days. Ex. 24 means that the window stops 24 hours ago"
-        default: "-24"  # negative means in the future. This is to neutralize time zone differences
+        description: "Stop of the window in hours. Ex. 24 means that the window stops 24 hours ago"
+        default: "0"
         type: "string"
 
 jobs:
