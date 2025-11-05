@@ -22,6 +22,7 @@ dependencies = [
     "atoma",
     "numpy",
     "python-dotenv",
+    "tenacity",
     ]
 
 [build-system]

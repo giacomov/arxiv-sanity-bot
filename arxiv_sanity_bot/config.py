@@ -21,6 +21,9 @@ ARXIV_NUM_RETRIES = 50
 # Paging settings
 ARXIV_PAGE_SIZE = 100  # papers
 ARXIV_MAX_PAGES = 10
+# Retry settings for when API returns zero results
+ARXIV_ZERO_RESULTS_MAX_RETRIES = 10
+ARXIV_ZERO_RESULTS_MAX_WAIT_TIME = 300  # seconds (5 minutes)
 
 # This defines the time window to consider
 WINDOW_START = 72  # hours ago

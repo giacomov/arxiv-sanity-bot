@@ -9,6 +9,13 @@ import arxiv
 from arxiv import SortOrder
 import atoma
 import xml.etree.ElementTree as ET
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    RetryCallState,
+)
 
 
 from arxiv_sanity_bot.altmetric.scores import gather_scores
@@ -18,9 +25,23 @@ from arxiv_sanity_bot.config import (
     ARXIV_NUM_RETRIES,
     ARXIV_MAX_PAGES,
     ARXIV_PAGE_SIZE,
+    ARXIV_ZERO_RESULTS_MAX_RETRIES,
+    ARXIV_ZERO_RESULTS_MAX_WAIT_TIME,
 )
 from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent, FatalErrorEvent
 from arxiv_sanity_bot.sanitize_text import sanitize_text
+
+
+class ArxivZeroResultsError(Exception):
+    pass
+
+
+def _log_retry_attempt(retry_state: RetryCallState) -> None:
+    wait_time = retry_state.next_action.sleep if retry_state.next_action else 0
+    RetryableErrorEvent(
+        msg=f"Arxiv API returned zero results. Retrying in {wait_time:.1f}s (attempt {retry_state.attempt_number}/{ARXIV_ZERO_RESULTS_MAX_RETRIES})",
+        context={"exception": str(retry_state.outcome.exception())},
+    )
 
 
 def _extract_arxiv_id(entry_id):
@@ -34,7 +55,7 @@ def get_all_abstracts(
     chunk_size=ARXIV_PAGE_SIZE,
 ) -> pd.DataFrame:
 
-    rows = _fetch_from_arxiv_3(after, before, chunk_size * max_pages)
+    rows = _fetch_from_arxiv(after, before, chunk_size * max_pages)
 
     InfoEvent(msg=f"Fetched {len(rows)} abstracts from Arxiv")
 
@@ -60,42 +81,6 @@ def get_all_abstracts(
         return abstracts
 
 
-def _fetch_from_arxiv(after, chunk_size, max_pages):
-
-    custom_client = arxiv.Client(
-        page_size=chunk_size,
-        delay_seconds=ARXIV_DELAY,
-        num_retries=ARXIV_NUM_RETRIES,
-    )
-
-    rows = []
-    for i, result in enumerate(
-            custom_client.results(
-                arxiv.Search(
-                    query=ARXIV_QUERY,
-                    max_results=chunk_size * max_pages,
-                    sort_by=arxiv.SortCriterion.SubmittedDate,
-                    sort_order=SortOrder.Descending,
-                )
-            )
-    ):
-        if result.published < after:
-            InfoEvent(
-                msg=f"Breaking after {i} papers as published date was earlier than the window start"
-            )
-            break
-
-        rows.append(
-            {
-                "arxiv": _extract_arxiv_id(result.entry_id),
-                "title": result.title,
-                "abstract": sanitize_text(result.summary),
-                "published_on": result.published,
-            }
-        )
-    return rows
-
-
 def _fetch_scores(abstracts):
     scores = pd.DataFrame(asyncio.run(gather_scores(abstracts["arxiv"].tolist())))
     return scores
@@ -105,8 +90,14 @@ def get_url(arxiv_id):
     return f"https://arxiv.org/abs/{arxiv_id}"
 
 
-def _fetch_from_arxiv_3(after_date, before_date, max_results=1000):
-    """Original API method - kept as backup"""
+@retry(
+    retry=retry_if_exception_type(ArxivZeroResultsError),
+    stop=stop_after_attempt(ARXIV_ZERO_RESULTS_MAX_RETRIES),
+    wait=wait_exponential(multiplier=1, min=1, max=min(64, ARXIV_ZERO_RESULTS_MAX_WAIT_TIME)),
+    before_sleep=_log_retry_attempt,
+    reraise=True,
+)
+def _fetch_from_arxiv(after_date, before_date, max_results=1000):
     categories = "cat:cs.CV OR cat:cs.LG OR cat:cs.CL OR cat:cs.AI OR cat:cs.NE OR cat:cs.RO"
     
     def format_datetime_for_arxiv(dt_string):
@@ -139,8 +130,10 @@ def _fetch_from_arxiv_3(after_date, before_date, max_results=1000):
             entries = root.findall('{http://www.w3.org/2005/Atom}entry')
 
             print(f"Fetched {len(entries)} entries from Arxiv API starting at {start}")
-            
+
             if not entries:
+                if start == 0:
+                    raise ArxivZeroResultsError("Arxiv API returned zero results")
                 break
                 
             for entry in entries:
@@ -168,10 +161,12 @@ def _fetch_from_arxiv_3(after_date, before_date, max_results=1000):
             start += max_results
             time.sleep(1)
             
+        except ArxivZeroResultsError:
+            raise
         except Exception as e:
             print(f"API error: {e}")
             break
-    
+
     return papers
 
 
