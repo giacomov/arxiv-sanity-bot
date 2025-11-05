@@ -11,6 +11,7 @@ from arxiv_sanity_bot.arxiv.extract_image import (
     extract_first_image,
     _select_image_or_graph,
 )
+from arxiv_sanity_bot.arxiv.image_validation import has_image_content
 
 
 def check_image_content(new_image, reference_image_path):
@@ -165,3 +166,25 @@ def test_select_image_or_graph():
         )
         is None
     )
+
+
+def test_has_image_content_with_blank_image():
+    blank_image = Image.new('RGB', (100, 100), color='white')
+    blank_image.save('test_blank.png')
+
+    assert not has_image_content('test_blank.png')
+
+    os.remove('test_blank.png')
+
+
+def test_has_image_content_with_actual_content():
+    content_image = Image.new('RGB', (100, 100))
+    pixels = content_image.load()
+    for i in range(100):
+        for j in range(100):
+            pixels[i, j] = (i * 2, j * 2, (i + j) % 256)
+    content_image.save('test_content.png')
+
+    assert has_image_content('test_content.png')
+
+    os.remove('test_content.png')

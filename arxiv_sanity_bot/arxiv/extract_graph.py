@@ -1,5 +1,7 @@
 import fitz
+import os
 
+from arxiv_sanity_bot.arxiv.image_validation import has_image_content
 from arxiv_sanity_bot.events import InfoEvent
 
 
@@ -113,6 +115,10 @@ def _extract_graph(pdf_path, arxiv_id):
             continue
 
         image_path = _save_cutout(arxiv_id, new_rects, page)
+
+        if not has_image_content(image_path):
+            os.remove(image_path)
+            continue
 
         InfoEvent(f"Found first graph for {arxiv_id}")
         return image_path, page.number
