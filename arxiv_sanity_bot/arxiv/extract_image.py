@@ -7,6 +7,7 @@ import os
 from PIL import Image
 
 from arxiv_sanity_bot.arxiv.extract_graph import extract_graph
+from arxiv_sanity_bot.arxiv.image_validation import has_image_content
 from arxiv_sanity_bot.config import ARXIV_NUM_RETRIES
 from arxiv_sanity_bot.events import InfoEvent
 
@@ -141,6 +142,9 @@ def _save_first_image(arxiv_id, page):
         with open(filename, "wb") as image_file:
             image_file.write(image.data)
         InfoEvent(f"Bitmap image saved in {filename}")
+        if not has_image_content(filename):
+            os.remove(filename)
+            continue
         return filename
     return None
 
