@@ -27,6 +27,13 @@ def _create_tweet(
     media_ids: list[str] | None = None,
     in_reply_to_tweet_id: int | None = None,
 ) -> Any:
+    logger.info(
+        "Attempting to create tweet",
+        extra={
+            "has_media": media_ids is not None,
+            "is_reply": in_reply_to_tweet_id is not None,
+        }
+    )
     return client.create_tweet(
         text=text, media_ids=media_ids, in_reply_to_tweet_id=in_reply_to_tweet_id
     )
