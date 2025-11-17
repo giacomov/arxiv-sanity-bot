@@ -131,7 +131,23 @@ def _keep_only_new_abstracts(abstracts: pd.DataFrame, doc_store: DocumentStore) 
 def _summarize_top_abstracts(selected_abstracts: pd.DataFrame) -> list[dict[str, Any]]:
     summaries: list[dict[str, Any]] = []
 
-    for i, row in selected_abstracts.iloc[:MAX_NUM_PAPERS].iterrows():
+    top_papers = selected_abstracts.iloc[:MAX_NUM_PAPERS]
+
+    logger.info(f"Selected {len(top_papers)} papers to summarize")
+    for paper_num, (_, row) in enumerate(top_papers.iterrows(), start=1):
+        logger.info(
+            f"Paper {paper_num}: {row['arxiv']}",
+            extra={
+                "title": row["title"],
+                "score": row["score"],
+                "alphaxiv_rank": row.get("alphaxiv_rank"),
+                "hf_rank": row.get("hf_rank"),
+                "average_rank": row.get("average_rank"),
+                "published_on": row["published_on"].isoformat() if hasattr(row["published_on"], "isoformat") else str(row["published_on"]),
+            }
+        )
+
+    for i, row in top_papers.iterrows():
         summary, url, img_path = _summarize(row)
 
         if summary is not None:
@@ -193,8 +209,6 @@ def _gather_abstracts(window_start: int, window_stop: int) -> tuple[pd.DataFrame
         )
 
         return abstracts, 0
-
-    print(abstracts.head())
 
     # Threshold on score
     idx = abstracts["score"] >= SCORE_THRESHOLD
