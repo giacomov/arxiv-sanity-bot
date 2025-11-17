@@ -1,38 +1,53 @@
-import time
-from typing import Tuple
-import tweepy
+from typing import Any
+import tweepy  # type: ignore
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+    retry_if_exception_type,
+)
 
 from arxiv_sanity_bot.config import TWITTER_N_TRIALS, TWITTER_SLEEP_TIME
-from arxiv_sanity_bot.events import InfoEvent, FatalErrorEvent, RetryableErrorEvent
+from arxiv_sanity_bot.logger import get_logger
 from arxiv_sanity_bot.twitter.auth import TwitterOAuth1
 
 
-def twitter_autoretry(functor, error_msg):
-    for i in range(TWITTER_N_TRIALS):
-        try:
-            return functor()
+logger = get_logger(__name__)
 
-        except tweepy.errors.TweepyException as e:
-            if (i + 1) < TWITTER_N_TRIALS:
-                RetryableErrorEvent(
-                    msg=f"{error_msg}. Retrying after {TWITTER_SLEEP_TIME} s",
-                    context={"exception": str(e)},
-                )
-                time.sleep(TWITTER_SLEEP_TIME)
-                continue
-            else:
-                InfoEvent(
-                    msg=f"{error_msg} after {TWITTER_N_TRIALS}. Giving up.",
-                    context={"exception": str(e)},
-                )
+
+@retry(
+    retry=retry_if_exception_type(tweepy.errors.TweepyException),
+    stop=stop_after_attempt(TWITTER_N_TRIALS),
+    wait=wait_fixed(TWITTER_SLEEP_TIME),
+    reraise=True,
+)
+def _create_tweet(
+    client: tweepy.Client,
+    text: str,
+    media_ids: list[str] | None = None,
+    in_reply_to_tweet_id: int | None = None,
+) -> Any:
+    return client.create_tweet(
+        text=text, media_ids=media_ids, in_reply_to_tweet_id=in_reply_to_tweet_id
+    )
+
+
+@retry(
+    retry=retry_if_exception_type(tweepy.errors.TweepyException),
+    stop=stop_after_attempt(TWITTER_N_TRIALS),
+    wait=wait_fixed(TWITTER_SLEEP_TIME),
+    reraise=True,
+)
+def _upload_image_with_retry(api: tweepy.API, img_path: str) -> Any:
+    return api.simple_upload(img_path)
 
 
 def send_tweet(
     tweet: str,
     auth: TwitterOAuth1,
-    img_path: str = None,
-    in_reply_to_tweet_id: int = None,
-) -> Tuple[str, int]:
+    img_path: str | None = None,
+    in_reply_to_tweet_id: int | None = None,
+) -> tuple[str | None, int | None]:
     """
     Send a tweet.
 
@@ -61,25 +76,16 @@ def send_tweet(
 
     mids = media_ids if len(media_ids) > 0 else None
 
-    response = twitter_autoretry(
-        lambda: client.create_tweet(
-            text=tweet, media_ids=mids, in_reply_to_tweet_id=in_reply_to_tweet_id
-        ),
-        "Could not send tweet",
-    )
-
-    if response is None:
-
-        # Twitter sometimes removes images because they are falsely classified as spam.
-        # Try sending the tweet without image
-        response = twitter_autoretry(
-            lambda: client.create_tweet(
-                text=tweet, in_reply_to_tweet_id=in_reply_to_tweet_id
-            ),
-            "Could not send tweet even without image",
+    try:
+        response = _create_tweet(client, tweet, mids, in_reply_to_tweet_id)
+    except tweepy.errors.TweepyException:
+        logger.error(
+            "Could not send tweet with image",
+            exc_info=True,
         )
+        response = _create_tweet(client, tweet, None, in_reply_to_tweet_id)
 
-    InfoEvent(msg=f"Sent tweet {tweet}")
+    logger.info(f"Sent tweet {tweet}")
 
     tweet_url = f"https://twitter.com/user/status/{response.data['id']}" if response else None
     tweet_id = response.data["id"] if response else None
@@ -87,16 +93,18 @@ def send_tweet(
     return tweet_url, tweet_id
 
 
-def _upload_image(auth, img_path):
+def _upload_image(auth: Any, img_path: str | None) -> list[str]:
     api = tweepy.API(auth)
-    media_ids = []
+    media_ids: list[str] = []
     if img_path is not None:
-        upload = twitter_autoretry(
-            lambda: api.simple_upload(img_path), "Could not upload image"
-        )
-
-        if upload is not None:
-            InfoEvent(msg=f"Uploaded image {img_path} as media_id {upload.media_id_string}")
-
+        try:
+            upload = _upload_image_with_retry(api, img_path)
+            logger.info(f"Uploaded image {img_path} as media_id {upload.media_id_string}")
             media_ids.append(upload.media_id_string)
+        except tweepy.errors.TweepyException:
+            logger.error(
+                "Could not upload image after retries",
+                exc_info=True,
+                extra={"img_path": img_path},
+            )
     return media_ids

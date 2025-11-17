@@ -1,13 +1,17 @@
 import base64
 import json
+from typing import Any
 
-import firebase_admin
-from firebase_admin import credentials, firestore
+import firebase_admin  # type: ignore
+from firebase_admin import credentials, firestore  # type: ignore
 
 from arxiv_sanity_bot.config import FIREBASE_COLLECTION
-from arxiv_sanity_bot.events import InfoEvent
+from arxiv_sanity_bot.logger import get_logger
 
 import os
+
+
+logger = get_logger(__name__)
 
 
 class DocumentStore:
@@ -17,7 +21,7 @@ class DocumentStore:
         self._client = firestore.client()
 
     @classmethod
-    def from_env_variable(cls, env_variable_name="FIREBASE_CREDENTIALS"):
+    def from_env_variable(cls, env_variable_name: str = "FIREBASE_CREDENTIALS") -> "DocumentStore":
         return cls(
             firebase_credentials=cls._decode_credentials_from_env_variable(
                 env_variable_name
@@ -25,19 +29,19 @@ class DocumentStore:
         )
 
     @staticmethod
-    def _decode_credentials_from_env_variable(env_variable_name):
+    def _decode_credentials_from_env_variable(env_variable_name: str) -> dict[str, Any]:
         return json.loads(base64.b64decode(os.environ[env_variable_name]))
 
-    def __setitem__(self, document_id, document_data):
+    def __setitem__(self, document_id: str, document_data: dict[str, Any]):
         doc_ref = self._client.collection(FIREBASE_COLLECTION).document(document_id)
         doc_ref.set(document_data)
 
-        InfoEvent(msg=f"Document created with ID: {document_id}")
+        logger.info(f"Document created with ID: {document_id}")
 
-    def __getitem__(self, document_id):
+    def __getitem__(self, document_id: str) -> dict[str, Any] | None:
         doc_ref = self._client.collection(FIREBASE_COLLECTION).document(document_id)
         return doc_ref.get().to_dict()
 
-    def __contains__(self, document_id):
+    def __contains__(self, document_id: str) -> bool:
         doc_ref = self._client.collection(FIREBASE_COLLECTION).document(document_id)
         return doc_ref.get().exists

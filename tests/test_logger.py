@@ -23,4 +23,9 @@ def test_logging_configuration():
 
         assert logger.logger.level == logger._get_logging_level()
 
-    assert isinstance(logger.logger.handlers[0], logging.FileHandler)
+    # Check that we have both console and file handlers
+    root_logger = logging.getLogger("arxiv_sanity_bot")
+    assert len(root_logger.handlers) >= 2
+    handler_types = [type(h) for h in root_logger.handlers]
+    assert logging.StreamHandler in handler_types
+    assert logging.FileHandler in handler_types

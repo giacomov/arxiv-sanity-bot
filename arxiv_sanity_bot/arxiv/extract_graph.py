@@ -1,18 +1,20 @@
-import fitz
+import fitz  # type: ignore
 import os
+from typing import Any
 
 from arxiv_sanity_bot.arxiv.image_validation import has_image_content
-from arxiv_sanity_bot.events import InfoEvent
+from arxiv_sanity_bot.logger import get_logger
+
+
+logger = get_logger(__name__)
 
 
 PADDING = 7
 
 
-def _enlarge_rect(p):
+def _enlarge_rect(p: dict[str, Any]) -> tuple[Any, Any]:
     # import pdb;pdb.set_trace()
-    w = p["width"]
     # print(p)
-    # print(f"{w} {p['rect'].width}")
 
     color = None
     if p["color"]:
@@ -23,7 +25,7 @@ def _enlarge_rect(p):
     return p["rect"] + (-PADDING, -PADDING, PADDING, PADDING), color  # + (-w, -w, w, w)
 
 
-def is_grayish_or_blackish(rgb, threshold=20):
+def is_grayish_or_blackish(rgb: tuple[float, float, float], threshold: int = 20) -> bool:
     r, g, b = rgb
     if (max(r, g, b) - min(r, g, b)) <= (threshold / 255):
         # If all values are equal, the color is a shade of gray
@@ -36,17 +38,15 @@ def is_grayish_or_blackish(rgb, threshold=20):
         return False
 
 
-def _good_aspect_ratio_gray(ratio):
-
+def _good_aspect_ratio_gray(ratio: float) -> bool:
     return 1 < ratio < 10
 
 
-def _good_width_and_height(r):
-
+def _good_width_and_height(r: Any) -> bool:
     return r.width > 50 and r.height > 50
 
 
-def _is_not_noise(r, color):
+def _is_not_noise(r: Any, color: tuple[float, float, float] | None) -> bool:
     ratio = r.width / (r.height + 1e-3)
     area = r.width * r.height
 
@@ -60,7 +60,7 @@ def _is_not_noise(r, color):
         return (ratio > 1) and (r.width > 1) and (r.height > 1) and (area > 0)
 
 
-def _union_all_rectangles(new_rects):
+def _union_all_rectangles(new_rects: list[Any]) -> Any:
     # for r in new_rects:
     #     print(f"{r}: ratio: {r.width / r.height} area: {r.width * r.height}, w: {r.width}, h: {r.height}")
 
@@ -74,7 +74,7 @@ def _union_all_rectangles(new_rects):
     return fitz.Rect(x0, y0, x1, y1)
 
 
-def _regularize_box(x0, x1, y0, y1):
+def _regularize_box(x0: float, x1: float, y0: float, y1: float) -> tuple[float, float, float, float]:
     """
     Make sure the box is not too crazy in terms of aspect ratio
     """
@@ -95,16 +95,15 @@ def _regularize_box(x0, x1, y0, y1):
     return x0, x1, y0, y1
 
 
-def extract_graph(pdf_path, arxiv_id):
-
+def extract_graph(pdf_path: str, arxiv_id: str) -> tuple[str | None, int | None]:
     try:
         return _extract_graph(pdf_path, arxiv_id)
     except Exception as e:
-        InfoEvent(msg="Extraction of graph failed with an exception", context={"exception": str(e)})
+        logger.info("Extraction of graph failed with an exception", extra={"exception": str(e)})
         return None, None
 
 
-def _extract_graph(pdf_path, arxiv_id):
+def _extract_graph(pdf_path: str, arxiv_id: str) -> tuple[str | None, int | None]:
     doc = fitz.open(pdf_path)
 
     for page in doc:
@@ -120,14 +119,14 @@ def _extract_graph(pdf_path, arxiv_id):
             os.remove(image_path)
             continue
 
-        InfoEvent(f"Found first graph for {arxiv_id}")
+        logger.info(f"Found first graph for {arxiv_id}")
         return image_path, page.number
 
-    InfoEvent(f"No graph found for {arxiv_id}")
+    logger.info(f"No graph found for {arxiv_id}")
     return None, None
 
 
-def _save_cutout(arxiv_id, new_rects, page):
+def _save_cutout(arxiv_id: str, new_rects: list[Any], page: Any) -> str:
     all_r = _union_all_rectangles(new_rects)
     mat = fitz.Matrix(3, 3)
     pix = page.get_pixmap(matrix=mat, clip=all_r)
@@ -136,8 +135,8 @@ def _save_cutout(arxiv_id, new_rects, page):
     return image_path
 
 
-def _get_bounding_boxes(page):
-    new_rects = []
+def _get_bounding_boxes(page: Any) -> list[Any]:
+    new_rects: list[Any] = []
 
     for p in page.get_drawings():
         r, remainder, color = _process_drawing(new_rects, p)
@@ -148,7 +147,7 @@ def _get_bounding_boxes(page):
     return new_rects
 
 
-def _process_drawing(new_rects, p):
+def _process_drawing(new_rects: list[Any], p: Any) -> tuple[Any, list[Any], Any]:
     r, color = _enlarge_rect(p)
     for i in range(len(new_rects)):
         if abs(r & new_rects[i]) > 0:

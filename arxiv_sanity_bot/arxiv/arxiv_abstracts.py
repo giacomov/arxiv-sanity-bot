@@ -3,11 +3,9 @@ from datetime import datetime
 import re
 import requests
 import time
+from typing import Any
 
 import pandas as pd
-import arxiv
-from arxiv import SortOrder
-import atoma
 import xml.etree.ElementTree as ET
 from tenacity import (
     retry,
@@ -20,7 +18,6 @@ from tenacity import (
 
 from arxiv_sanity_bot.altmetric.scores import gather_scores
 from arxiv_sanity_bot.config import (
-    ARXIV_QUERY,
     ARXIV_DELAY,
     ARXIV_NUM_RETRIES,
     ARXIV_MAX_PAGES,
@@ -28,8 +25,11 @@ from arxiv_sanity_bot.config import (
     ARXIV_ZERO_RESULTS_MAX_RETRIES,
     ARXIV_ZERO_RESULTS_MAX_WAIT_TIME,
 )
-from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent, FatalErrorEvent
-from arxiv_sanity_bot.sanitize_text import sanitize_text
+from arxiv_sanity_bot.logger import get_logger, FatalError
+from arxiv_sanity_bot.schemas import ArxivPaper
+
+
+logger = get_logger(__name__)
 
 
 class ArxivZeroResultsError(Exception):
@@ -38,34 +38,36 @@ class ArxivZeroResultsError(Exception):
 
 def _log_retry_attempt(retry_state: RetryCallState) -> None:
     wait_time = retry_state.next_action.sleep if retry_state.next_action else 0
-    RetryableErrorEvent(
-        msg=f"Arxiv API returned zero results. Retrying in {wait_time:.1f}s (attempt {retry_state.attempt_number}/{ARXIV_ZERO_RESULTS_MAX_RETRIES})",
-        context={"exception": str(retry_state.outcome.exception())},
+    exception_str = str(retry_state.outcome.exception()) if retry_state.outcome else "Unknown"
+    logger.error(
+        f"Arxiv API returned zero results. Retrying in {wait_time:.1f}s (attempt {retry_state.attempt_number}/{ARXIV_ZERO_RESULTS_MAX_RETRIES})",
+        exc_info=True,
+        extra={"exception": exception_str},
     )
 
 
-def _extract_arxiv_id(entry_id):
-    return re.match(r".+abs/([0-9\.]+)(v[0-9]+)?", entry_id).groups()[0]
+def _extract_arxiv_id(entry_id: str) -> str:
+    match = re.match(r".+abs/([0-9\.]+)(v[0-9]+)?", entry_id)
+    return match.groups()[0] if match else ""
 
 
 def get_all_abstracts(
-    after,
-    before,
-    max_pages=ARXIV_MAX_PAGES,
-    chunk_size=ARXIV_PAGE_SIZE,
+    after: datetime,
+    before: datetime,
+    max_pages: int = ARXIV_MAX_PAGES,
+    chunk_size: int = ARXIV_PAGE_SIZE,
 ) -> pd.DataFrame:
 
     rows = _fetch_from_arxiv(after, before, chunk_size * max_pages)
 
-    InfoEvent(msg=f"Fetched {len(rows)} abstracts from Arxiv")
+    logger.info(f"Fetched {len(rows)} abstracts from Arxiv")
 
     if len(rows) == 0:
         return pd.DataFrame()
 
     abstracts = pd.DataFrame(rows)
 
-    # Filter on time
-    abstracts["published_on"] = pd.to_datetime(abstracts["published_on"])
+    # Filter on time (already datetime from Pydantic model)
     idx = (abstracts["published_on"] < before) & (abstracts["published_on"] > after)
     abstracts = abstracts[idx].reset_index(drop=True)
 
@@ -81,12 +83,12 @@ def get_all_abstracts(
         return abstracts
 
 
-def _fetch_scores(abstracts):
+def _fetch_scores(abstracts: pd.DataFrame) -> pd.DataFrame:
     scores = pd.DataFrame(asyncio.run(gather_scores(abstracts["arxiv"].tolist())))
     return scores
 
 
-def get_url(arxiv_id):
+def get_url(arxiv_id: str) -> str:
     return f"https://arxiv.org/abs/{arxiv_id}"
 
 
@@ -97,22 +99,22 @@ def get_url(arxiv_id):
     before_sleep=_log_retry_attempt,
     reraise=True,
 )
-def _fetch_from_arxiv(after_date, before_date, max_results=1000):
-    categories = "cat:cs.CV OR cat:cs.LG OR cat:cs.CL OR cat:cs.AI OR cat:cs.NE OR cat:cs.RO"
-    
-    def format_datetime_for_arxiv(dt_string):
+def _fetch_from_arxiv(after_date: datetime, before_date: datetime, max_results: int = 1000) -> list[dict[str, Any]]:
+    category_query = "cat:cs.CV OR cat:cs.LG OR cat:cs.CL OR cat:cs.AI OR cat:cs.NE OR cat:cs.RO"
+
+    def format_datetime_for_arxiv(dt_string: str) -> str:
         dt = datetime.fromisoformat(dt_string.replace('Z', '+00:00'))
         return dt.strftime('%Y%m%d%H%M')
-    
+
     after_formatted = format_datetime_for_arxiv(after_date.isoformat())
     before_formatted = format_datetime_for_arxiv(before_date.isoformat())
-    search_query = f"({categories}) AND submittedDate:[{after_formatted} TO {before_formatted}]"
+    search_query = f"({category_query}) AND submittedDate:[{after_formatted} TO {before_formatted}]"
     
-    papers = []
-    start = 0
+    papers: list[dict[str, Any]] = []
+    start: int = 0
     
     while True:
-        params = {
+        params: dict[str, str | int] = {
             'search_query': search_query,
             'start': start,
             'max_results': max_results,
@@ -137,23 +139,45 @@ def _fetch_from_arxiv(after_date, before_date, max_results=1000):
                 break
                 
             for entry in entries:
-                published_str = entry.find('{http://www.w3.org/2005/Atom}published').text
+                published_elem = entry.find('{http://www.w3.org/2005/Atom}published')
+                if published_elem is None or published_elem.text is None:
+                    continue
+                published_str = published_elem.text
                 published_dt = datetime.fromisoformat(published_str.replace('Z', '+00:00'))
-                
+
                 after_dt = datetime.fromisoformat(after_date.isoformat().replace('Z', '+00:00'))
                 before_dt = datetime.fromisoformat(before_date.isoformat().replace('Z', '+00:00'))
-                
+
                 if not (after_dt <= published_dt <= before_dt):
                     continue
-                    
-                paper_info = {
-                    'arxiv': _extract_arxiv_id(entry.find('{http://www.w3.org/2005/Atom}id').text),
-                    'title': entry.find('{http://www.w3.org/2005/Atom}title').text.strip(),
-                    'abstract': entry.find('{http://www.w3.org/2005/Atom}summary').text.strip(),
-                    'published_on': entry.find('{http://www.w3.org/2005/Atom}published').text,
-                    'categories': [cat.get('term') for cat in entry.findall('{http://arxiv.org/schemas/atom}primary_category')]
-                }
-                papers.append(paper_info)
+
+                id_elem = entry.find('{http://www.w3.org/2005/Atom}id')
+                title_elem = entry.find('{http://www.w3.org/2005/Atom}title')
+                summary_elem = entry.find('{http://www.w3.org/2005/Atom}summary')
+
+                if id_elem is None or id_elem.text is None:
+                    continue
+                if title_elem is None or title_elem.text is None:
+                    continue
+                if summary_elem is None or summary_elem.text is None:
+                    continue
+
+                try:
+                    categories = [
+                        cat_term for cat in entry.findall('{http://arxiv.org/schemas/atom}primary_category')
+                        if (cat_term := cat.get('term')) is not None
+                    ]
+                    paper = ArxivPaper(
+                        arxiv=_extract_arxiv_id(id_elem.text),
+                        title=title_elem.text.strip(),
+                        abstract=summary_elem.text.strip(),
+                        published_on=published_dt,
+                        categories=categories
+                    )
+                    papers.append(paper.model_dump())
+                except Exception as e:
+                    logger.error("Failed to parse paper", exc_info=True, extra={"exception": str(e)})
+                    continue
             
             if len(entries) < max_results:
                 break
@@ -171,15 +195,16 @@ def _fetch_from_arxiv(after_date, before_date, max_results=1000):
 
 
 
-def _fetch_from_arxiv_api(base_url, query):
+def _fetch_from_arxiv_api(base_url: str, query: dict[str, Any]) -> requests.Response | None:
     for _ in range(ARXIV_NUM_RETRIES):
         try:
             response = requests.get(base_url, params=query)
             response.raise_for_status()  # Raise an error for bad responses
         except Exception as e:
-            RetryableErrorEvent("Could not get results from arxiv.", context={'exception': str(e)})
+            logger.error("Could not get results from arxiv.", exc_info=True, extra={'exception': str(e)})
             time.sleep(ARXIV_DELAY)
         else:
             return response
 
-    FatalErrorEvent(f"Could not get results from arxiv after {ARXIV_NUM_RETRIES} trials")
+    logger.critical(f"Could not get results from arxiv after {ARXIV_NUM_RETRIES} trials")
+    raise FatalError(f"Could not get results from arxiv after {ARXIV_NUM_RETRIES} trials")

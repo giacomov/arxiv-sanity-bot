@@ -1,3 +1,11 @@
+"""
+DEPRECATED: Altmetric API removed public access from its API in November 2025
+
+This module is kept for backward compatibility but is no longer used.
+The bot now uses alphaXiv + HuggingFace for paper ranking.
+See arxiv_sanity_bot.ranking.ranked_papers for the new implementation.
+"""
+
 import random
 import time
 from typing import List, Dict
@@ -5,12 +13,14 @@ from typing import List, Dict
 import httpx
 import asyncio
 
-from arxiv_sanity_bot.config import (
-    ALTMETRIC_CHUNK_SIZE,
-    ALTMETRIC_N_RETRIES,
-    ALTMETRIC_WAIT_TIME,
-)
-from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent
+from arxiv_sanity_bot.logger import get_logger
+
+
+logger = get_logger(__name__)
+
+ALTMETRIC_CHUNK_SIZE = 50
+ALTMETRIC_N_RETRIES = 10
+ALTMETRIC_WAIT_TIME = 20
 
 
 async def _gather_one_score(arxiv_id: str) -> Dict:
@@ -22,9 +32,10 @@ async def _gather_one_score(arxiv_id: str) -> Dict:
             async with httpx.AsyncClient(verify=False) as client:
                 response = await client.get(url)
         except Exception as e:
-            RetryableErrorEvent(
-                msg=f"Error retrieving {arxiv_id} from altmetric at {url}",
-                context={"exception": str(e)},
+            logger.error(
+                f"Error retrieving {arxiv_id} from altmetric at {url}",
+                exc_info=True,
+                extra={"exception": str(e)},
             )
             time.sleep(ALTMETRIC_WAIT_TIME)
             continue
@@ -58,15 +69,15 @@ async def gather_scores(
     """
     results = []
     for i in range(0, len(arxiv_ids), chunk_size):
-        InfoEvent(
-            msg=f"Fetching from Altmetric the scores for papers {i} - {i+chunk_size}"
+        logger.info(
+            f"Fetching from Altmetric the scores for papers {i} - {i+chunk_size}"
         )
         chunk = arxiv_ids[i : i + chunk_size]
         chunk_results = await asyncio.gather(*[_gather_one_score(x) for x in chunk])
         results.extend(chunk_results)
 
         delay = random.randint(1, 5)
-        InfoEvent(f"Waiting for {delay} seconds")
+        logger.info(f"Waiting for {delay} seconds")
         time.sleep(delay)
 
     assert len(results) == len(arxiv_ids)

@@ -1,4 +1,7 @@
-from unittest import mock
+import pandas as pd
+import pytest
+from datetime import datetime, timezone
+from unittest.mock import Mock, patch
 
 from arxiv_sanity_bot.arxiv.arxiv_abstracts import (
     get_all_abstracts,
@@ -7,13 +10,6 @@ from arxiv_sanity_bot.arxiv.arxiv_abstracts import (
     _fetch_from_arxiv,
     ArxivZeroResultsError,
 )
-import pandas as pd
-import arxiv
-from unittest.mock import Mock, patch, MagicMock
-import pytest
-from datetime import datetime, timezone
-
-from arxiv_sanity_bot.sanitize_text import sanitize_text
 
 
 @pytest.fixture
@@ -47,14 +43,14 @@ def test_get_all_abstracts():
             'arxiv': '2401.00001',
             'title': 'Test Paper 1',
             'abstract': 'Test abstract 1',
-            'published_on': '2024-01-01T10:00:00Z',
+            'published_on': datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
             'categories': ['cs.LG']
         },
         {
             'arxiv': '2401.00002',
             'title': 'Test Paper 2',
             'abstract': 'Test abstract 2',
-            'published_on': '2024-01-01T15:00:00Z',
+            'published_on': datetime(2024, 1, 1, 15, 0, 0, tzinfo=timezone.utc),
             'categories': ['cs.CV']
         }
     ]
@@ -110,7 +106,7 @@ def test_fetch_from_arxiv_retries_on_zero_results():
 
     with patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.requests.get') as mock_get, \
          patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.time.sleep') as mock_sleep, \
-         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.RetryableErrorEvent') as mock_retry_event:
+         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.logger') as mock_logger:
 
         mock_get.side_effect = [mock_response_empty, mock_response_with_data]
 
@@ -121,7 +117,7 @@ def test_fetch_from_arxiv_retries_on_zero_results():
         assert result[0]['title'] == 'Test Paper'
 
         assert mock_get.call_count == 2
-        mock_retry_event.assert_called_once()
+        mock_logger.error.assert_called_once()
         mock_sleep.assert_called_once()
 
 
@@ -140,7 +136,7 @@ def test_fetch_from_arxiv_raises_after_max_retries():
 
     with patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.requests.get', return_value=mock_response), \
          patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.time.sleep'), \
-         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.RetryableErrorEvent'), \
+         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.logger'), \
          patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.ARXIV_ZERO_RESULTS_MAX_RETRIES', 3):
 
         with pytest.raises(ArxivZeroResultsError):
@@ -156,7 +152,7 @@ def test_fetch_from_arxiv_does_not_retry_on_api_errors():
 
     with patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.requests.get', return_value=mock_response), \
          patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.time.sleep') as mock_sleep, \
-         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.RetryableErrorEvent'):
+         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.logger'):
 
         result = _fetch_from_arxiv(after, before, max_results=1000)
 

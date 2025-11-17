@@ -1,18 +1,21 @@
-import shutil
-
-import pypdf
-import pypdf.errors
-import arxiv
 import os
+from typing import Any
+
+import arxiv  # type: ignore
+import pypdf  # type: ignore
+import pypdf.errors  # type: ignore
 from PIL import Image
 
 from arxiv_sanity_bot.arxiv.extract_graph import extract_graph
 from arxiv_sanity_bot.arxiv.image_validation import has_image_content
 from arxiv_sanity_bot.config import ARXIV_NUM_RETRIES
-from arxiv_sanity_bot.events import InfoEvent
+from arxiv_sanity_bot.logger import get_logger
 
 
-def extract_first_image(arxiv_id: str, pdf_path: str = None):
+logger = get_logger(__name__)
+
+
+def extract_first_image(arxiv_id: str, pdf_path: str | None = None) -> str | None:
     """
     Extract the first image from the PDF.
 
@@ -49,7 +52,7 @@ def extract_first_image(arxiv_id: str, pdf_path: str = None):
         return None
 
 
-def _convert_to_jpeg(input_path, output_path):
+def _convert_to_jpeg(input_path: str, output_path: str):
     with Image.open(input_path) as img:
         max_size = 500
         if max(img.size) > max_size:
@@ -57,29 +60,31 @@ def _convert_to_jpeg(input_path, output_path):
         img.convert("RGB").save(output_path, "JPEG", quality=85)
 
 
-def select_first_image(graph_file, graph_page_number, image_file, image_page_number):
-    InfoEvent("Found both bitmap and graph images. Selecting the one that comes first")
-    return image_file if image_page_number <= graph_page_number else graph_file
+def select_first_image(graph_file: str | None, graph_page_number: int | None, image_file: str | None, image_page_number: int | None) -> str | None:
+    logger.info("Found both bitmap and graph images. Selecting the one that comes first")
+    if image_page_number is not None and graph_page_number is not None:
+        return image_file if image_page_number <= graph_page_number else graph_file
+    return image_file or graph_file
 
 
-def select_graph(graph_file, graph_page_number, image_file, image_page_number):
-    InfoEvent("Only graph found. Selecting that")
+def select_graph(graph_file: str | None, graph_page_number: int | None, image_file: str | None, image_page_number: int | None) -> str | None:
+    logger.info("Only graph found. Selecting that")
     return graph_file
 
 
-def select_image(graph_file, graph_page_number, image_file, image_page_number):
-    InfoEvent("Only bitmap image found. Selecting that")
+def select_image(graph_file: str | None, graph_page_number: int | None, image_file: str | None, image_page_number: int | None) -> str | None:
+    logger.info("Only bitmap image found. Selecting that")
     return image_file
 
 
-def no_image_or_graph(graph_file, graph_page_number, image_file, image_page_number):
-    InfoEvent("NO IMAGE NOR GRAPH FOUND")
+def no_image_or_graph(graph_file: str | None, graph_page_number: int | None, image_file: str | None, image_page_number: int | None) -> str | None:
+    logger.info("NO IMAGE NOR GRAPH FOUND")
     return None
 
 
 def _select_image_or_graph(
-    graph_file, graph_page_number, image_file, image_page_number
-):
+    graph_file: str | None, graph_page_number: int | None, image_file: str | None, image_page_number: int | None
+) -> str | None:
     # My logic
     if image_file is not None and graph_file is not None:
         return select_first_image(
@@ -99,7 +104,7 @@ def _select_image_or_graph(
     )
 
 
-def extract_image(pdf_path, arxiv_id):
+def extract_image(pdf_path: str, arxiv_id: str) -> tuple[str | None, int]:
     # Open the PDF file in binary mode
     with open(pdf_path, "rb") as pdf_file:
         # Create a PDF reader object
@@ -111,9 +116,9 @@ def extract_image(pdf_path, arxiv_id):
     return filename, page_number
 
 
-def _search_first_image_in_pages(arxiv_id, pdf_reader):
-    filename = None
-    page_number = -1
+def _search_first_image_in_pages(arxiv_id: str, pdf_reader: Any) -> tuple[str | None, int]:
+    filename: str | None = None
+    page_number: int = -1
 
     for page_number, page in enumerate(pdf_reader.pages):
         # pypdf does not support non-rectangular images
@@ -132,16 +137,16 @@ def _search_first_image_in_pages(arxiv_id, pdf_reader):
     return filename, page_number
 
 
-def _save_first_image(arxiv_id, page):
+def _save_first_image(arxiv_id: str, page: Any) -> str | None:
     for image in page.images:
         if len(image.data) < 1024:
             continue
-        InfoEvent(f"Found first bitmap image for {arxiv_id}")
+        logger.info(f"Found first bitmap image for {arxiv_id}")
         extension = os.path.splitext(image.name)[-1]
         filename = f"{arxiv_id}_first_image{extension}"
         with open(filename, "wb") as image_file:
             image_file.write(image.data)
-        InfoEvent(f"Bitmap image saved in {filename}")
+        logger.info(f"Bitmap image saved in {filename}")
         if not has_image_content(filename):
             os.remove(filename)
             continue
@@ -149,19 +154,19 @@ def _save_first_image(arxiv_id, page):
     return None
 
 
-def download_paper(arxiv_id):
+def download_paper(arxiv_id: str) -> str | None:
     search = arxiv.Search(id_list=[arxiv_id])
     paper = next(search.results())
-    InfoEvent(msg=f"Downloading paper {arxiv_id}")
+    logger.info(f"Downloading paper {arxiv_id}")
 
-    filename = None
+    filename: str | None = None
     for _ in range(ARXIV_NUM_RETRIES):
         try:
             filename = paper.download_pdf()
         except Exception:
             continue
         else:
-            InfoEvent(f"Downloaded pdf for {arxiv_id}")
+            logger.info(f"Downloaded pdf for {arxiv_id}")
             break
 
     return filename

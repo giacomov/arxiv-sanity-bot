@@ -4,10 +4,10 @@ import os
 
 @dataclasses.dataclass
 class TwitterOAuth1:
-    consumer_key: str = None
-    consumer_secret: str = None
-    access_token: str = None
-    access_token_secret: str = None
+    consumer_key: str = ""
+    consumer_secret: str = ""
+    access_token: str = ""
+    access_token_secret: str = ""
 
     def __post_init__(self):
         self.consumer_key = os.environ.get("TWITTER_CONSUMER_KEY", "")

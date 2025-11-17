@@ -1,8 +1,7 @@
 from arxiv_sanity_bot.config import ABSTRACT_ALLOWED_CHARACTERS
 
 
-def sanitize_text(text):
-    # Remove new line characters
+def sanitize_text(text: str) -> str:
     text = text.replace("\n", " ")
 
     # Remove extra white spaces
