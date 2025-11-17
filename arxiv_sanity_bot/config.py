@@ -2,12 +2,14 @@
 from zoneinfo import ZoneInfo
 
 # Papers under this score will not be posted
-SCORE_THRESHOLD = 8
+# NOTE: Score system changed - now 1-2 points (ranked sources) instead of Altmetric 0-100+
+SCORE_THRESHOLD = 1
 MAX_NUM_PAPERS = 10
 
 # Source for the abstracts
-# This should be either "arxiv" or "arxiv-sanity"
-SOURCE = "arxiv"
+# Options: "arxiv", "arxiv-sanity", "ranked"
+# "ranked" uses alphaXiv + HuggingFace (recommended)
+SOURCE = "ranked"
 
 # Arxiv settings
 ARXIV_QUERY = (
@@ -26,7 +28,7 @@ ARXIV_ZERO_RESULTS_MAX_RETRIES = 10
 ARXIV_ZERO_RESULTS_MAX_WAIT_TIME = 300  # seconds (5 minutes)
 
 # This defines the time window to consider
-WINDOW_START = 72  # hours ago
+WINDOW_START = 168  # hours ago (1 week)
 WINDOW_STOP = 0  # hours ago
 
 # Number of times to try calling chatGPT before giving up
@@ -43,28 +45,28 @@ TWITTER_N_TRIALS = 10
 # Seconds to wait if sending a tweet fails, before retrying
 TWITTER_SLEEP_TIME = 60
 
+# AlphaXiv settings
+ALPHAXIV_PAGE_SIZE = 500
+ALPHAXIV_MAX_PAPERS = 10000
+ALPHAXIV_TOP_PERCENTILE = 98  # Keep only top 2% of papers by votes (100 - 2 = 98)
+ALPHAXIV_N_RETRIES = 10
+ALPHAXIV_WAIT_TIME = 20
+
+# HuggingFace settings
+HF_N_RETRIES = 10
+HF_WAIT_TIME = 20
+
+# DEPRECATED: Altmetric API closed in 2024
 # How many calls we can make in parallel for the Altmetric
 # API
-ALTMETRIC_CHUNK_SIZE = 50
-ALTMETRIC_N_RETRIES = 10
-ALTMETRIC_WAIT_TIME = 20
+# ALTMETRIC_CHUNK_SIZE = 50
+# ALTMETRIC_N_RETRIES = 10
+# ALTMETRIC_WAIT_TIME = 20
 
 # Characters allowed in an abstract
 ABSTRACT_ALLOWED_CHARACTERS = (
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?'- "
 )
-
-# Time to give to arxiv-sanity-lite to render the pages
-# before trying to fetch them (in seconds)
-ARXIV_SANITY_RENDERING_TIME = 5
-# Max number of pages to fetch from arxiv-sanity in one go
-ARXIV_SANITY_MAX_PAGES = 10
-# How many pages to download concurrently from arxiv-sanity
-ARXIV_SANITY_CONCURRENT_DOWNLOADS = 5
-# How many times to retry in case of issues
-ARXIV_SANITY_N_TRIALS = 10
-# Seconds to wait if sending a download fails, before retrying
-ARXIV_SANITY_SLEEP_TIME = 60
 
 # The timezone to use for all time stamps
 TIMEZONE = ZoneInfo("UTC")

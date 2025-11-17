@@ -39,10 +39,10 @@ def store():
         json.dumps(firebase_credentials).encode()
     ).decode()
 
-    with patch("firebase_admin.initialize_app") as mock_initialize_app:
+    with patch("firebase_admin.initialize_app"):
         with patch(
             "firebase_admin.firestore.client", return_value=MockFirestore()
-        ) as mock_client:
+        ):
             store = DocumentStore.from_env_variable()
 
             yield store

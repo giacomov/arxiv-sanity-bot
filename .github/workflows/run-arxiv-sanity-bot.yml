@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
     inputs:
       window_start:
-        description: "Start of the window in hours. Ex. 48 means that the window starts 48 hours ago"
-        default: "96"
+        description: "Start of the window in hours. Ex. 168 means that the window starts 168 hours (1 week) ago"
+        default: "168"
         type: "string"
       window_stop:
-        description: "Stop of the window in hours. Ex. 24 means that the window stops 24 hours ago"
+        description: "Stop of the window in hours. Ex. 0 means up to now"
         default: "0"
         type: "string"
 
@@ -46,19 +46,11 @@ jobs:
         TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
         FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
       run: |
+        # Note: Bot always fetches 7 days from APIs, then filters by time window
         if [ ${{ inputs.window_start }} != "" ]; then
             uv run arxiv-sanity-bot --window_start ${{ inputs.window_start }} --window_stop ${{ inputs.window_stop }}
         else
-
-            if [ $(date +%a) == "Mon" ]; then
-              echo "Setting window_start to 96 because it is Monday"
-              export WINDOW_START=96
-            else
-              echo "Setting window_start to 72"
-              export WINDOW_START=72
-            fi
-
-            uv run arxiv-sanity-bot --window_start $WINDOW_START --window_stop -24
-
+            echo "Using default window: 1 week (168 hours) ago to now"
+            uv run arxiv-sanity-bot --window_start 168 --window_stop 0
         fi
-       
+

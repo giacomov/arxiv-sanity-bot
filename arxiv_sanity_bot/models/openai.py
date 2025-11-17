@@ -1,7 +1,8 @@
 import json
 import time
+from typing import Any
 
-from arxiv_sanity_bot.events import RetryableErrorEvent, FatalErrorEvent
+from arxiv_sanity_bot.logger import get_logger, FatalError
 from arxiv_sanity_bot.models.model import LLM
 from arxiv_sanity_bot.config import (
     CHATGPT_N_TRIALS,
@@ -11,7 +12,10 @@ from arxiv_sanity_bot.config import (
 import openai
 
 
-class ChatGPT(LLM):
+logger = get_logger(__name__)
+
+
+class OpenAI(LLM):
 
     def __init__(self):
         self._client = openai.OpenAI()
@@ -22,8 +26,8 @@ class ChatGPT(LLM):
         history = [
             {
                 "role": "system",
-                "content": f"You are a twitter chat bot. Write engaging tweets with a maximum length of "
-                f"255 characters. Be concise, informative, and engaging.",
+                "content": "You are a twitter chat bot. Write engaging tweets with a maximum length of "
+                "255 characters. Be concise, informative, and engaging.",
             },
             {
                 "role": "user",
@@ -35,15 +39,16 @@ class ChatGPT(LLM):
 
         for _ in range(CHATGPT_N_TRIALS):
 
-            summary = self._call_chatgpt(history)
+            summary = self._call_openai(history)
 
             if len(summary) <= TWEET_TEXT_LENGTH:
                 # This is a good tweet
                 break
             else:
-                RetryableErrorEvent(
-                    msg=f"Summary was {len(summary)} characters long instead of {TWEET_TEXT_LENGTH}.",
-                    context={"abstract": abstract, "this_summary": summary},
+                logger.error(
+                    f"Summary was {len(summary)} characters long instead of {TWEET_TEXT_LENGTH}.",
+                    exc_info=True,
+                    extra={"abstract": abstract, "this_summary": summary},
                 )
                 history.extend(
                     [
@@ -55,17 +60,18 @@ class ChatGPT(LLM):
                     ]
                 )
         else:
-            FatalErrorEvent(
-                msg=f"ChatGPT could not successfully generate a tweet after {CHATGPT_N_TRIALS}",
-                context={"abstract": abstract},
+            logger.critical(
+                f"OpenAI could not successfully generate a tweet after {CHATGPT_N_TRIALS}",
+                extra={"abstract": abstract},
             )
+            raise FatalError(f"OpenAI could not successfully generate a tweet after {CHATGPT_N_TRIALS}")
 
         return summary
 
     def generate_bot_summary(
         self, n_papers_considered: int, n_papers_reported: int
-    ):
-        # Generate a fun variation of the following phrase using ChatGPT
+    ) -> str:
+        # Generate a fun variation of the following phrase using OpenAI
         original_sentence = (
             f"In this round I considered {n_papers_considered} abstracts and selected "
             f"{n_papers_reported}. Read the summaries in the following tweets. See you in a few hours!"
@@ -81,11 +87,11 @@ class ChatGPT(LLM):
             },
         ]
 
-        sentence = self._call_chatgpt(history)
+        sentence = self._call_openai(history)
 
         return sentence
 
-    def _call_chatgpt(self, history):
+    def _call_openai(self, history: list[dict[str, Any]]) -> str:
         for i in range(CHATGPT_N_TRIALS):
 
             try:
@@ -96,9 +102,10 @@ class ChatGPT(LLM):
                     messages=history,
                 )
             except Exception as e:
-                RetryableErrorEvent(
-                    msg="Could not generate summary sentence",
-                    context={"exception": str(e)},
+                logger.error(
+                    "Could not generate summary sentence",
+                    exc_info=True,
+                    extra={"exception": str(e)},
                 )
                 time.sleep(CHATGPT_SLEEP_TIME)
                 continue
@@ -106,8 +113,5 @@ class ChatGPT(LLM):
                 sentence = completion.choices[0].message.content.strip()
                 return sentence
 
-        else:
-
-            FatalErrorEvent(
-                msg=f"Calling ChatGPT failed after {CHATGPT_N_TRIALS} attempts"
-            )
+        logger.critical(f"Calling OpenAI failed after {CHATGPT_N_TRIALS} attempts")
+        raise FatalError(f"Calling OpenAI failed after {CHATGPT_N_TRIALS} attempts")

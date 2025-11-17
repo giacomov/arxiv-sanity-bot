@@ -1,16 +1,19 @@
 from datetime import datetime, timedelta
 import time
 import random
+from typing import Any
+
 import click
+import numpy as np
 import pandas as pd
 
 import dotenv
 dotenv.load_dotenv()
 
-from arxiv_sanity_bot.arxiv_sanity import arxiv_sanity_abstracts
-from arxiv_sanity_bot.arxiv import arxiv_abstracts
-from arxiv_sanity_bot.arxiv.extract_image import extract_first_image
-from arxiv_sanity_bot.config import (
+from arxiv_sanity_bot.arxiv import arxiv_abstracts  # noqa: E402
+from arxiv_sanity_bot.ranking import ranked_papers  # noqa: E402
+from arxiv_sanity_bot.arxiv.extract_image import extract_first_image  # noqa: E402
+from arxiv_sanity_bot.config import (  # noqa: E402
     WINDOW_START,
     WINDOW_STOP,
     TIMEZONE,
@@ -18,14 +21,20 @@ from arxiv_sanity_bot.config import (
     SCORE_THRESHOLD,
     MAX_NUM_PAPERS,
 )
-from arxiv_sanity_bot.events import InfoEvent, RetryableErrorEvent
-from arxiv_sanity_bot.models.chatGPT import ChatGPT
-from arxiv_sanity_bot.store.store import DocumentStore
-from arxiv_sanity_bot.twitter.auth import TwitterOAuth1
-from arxiv_sanity_bot.twitter.send_tweet import send_tweet
+from arxiv_sanity_bot.logger import get_logger, FatalError  # noqa: E402
+from arxiv_sanity_bot.models.openai import OpenAI  # noqa: E402
+from arxiv_sanity_bot.store.store import DocumentStore  # noqa: E402
+from arxiv_sanity_bot.twitter.auth import TwitterOAuth1  # noqa: E402
+from arxiv_sanity_bot.twitter.send_tweet import send_tweet  # noqa: E402
 
 
-_SOURCES = {"arxiv-sanity": arxiv_sanity_abstracts, "arxiv": arxiv_abstracts}
+logger = get_logger(__name__)
+
+
+_SOURCES = {
+    "arxiv": arxiv_abstracts,
+    "ranked": ranked_papers,
+}
 
 
 @click.command()
@@ -33,7 +42,7 @@ _SOURCES = {"arxiv-sanity": arxiv_sanity_abstracts, "arxiv": arxiv_abstracts}
 @click.option("--window_stop", default=WINDOW_STOP, help="Window stop", type=int)
 @click.option("--dry", is_flag=True)
 def bot(window_start, window_stop, dry):
-    InfoEvent(msg="Bot starting")
+    logger.info("Bot starting")
 
     # This returns all abstracts above the threshold
     abstracts, n_retrieved = _gather_abstracts(window_start, window_stop)
@@ -52,21 +61,28 @@ def bot(window_start, window_stop, dry):
     if len(summaries) > 0:
         send_tweets(n_retrieved, summaries, doc_store, dry)
 
-    InfoEvent(msg="Bot finishing")
+    logger.info("Bot finishing")
 
 
-def send_tweets(n_retrieved, summaries, doc_store, dry):
+def send_tweets(n_retrieved: int, summaries: list[dict[str, Any]], doc_store: DocumentStore, dry: bool):
 
     # Send the tweets
     oauth = TwitterOAuth1()
 
     if dry:
-        tweet_sender = lambda *args, **kwargs: ("https://fake.url", "123456789")
+        def tweet_sender(tweet: str, auth: TwitterOAuth1, img_path: str | None = None, in_reply_to_tweet_id: int | None = None) -> tuple[str | None, int | None]:
+            return ("https://fake.url", 123456789)
     else:
         tweet_sender = send_tweet
 
-    InfoEvent("Sending summary tweet")
-    summary_tweet = ChatGPT().generate_bot_summary(n_retrieved, len(summaries))
+    logger.info("Sending summary tweet")
+    summary_tweet = OpenAI().generate_bot_summary(n_retrieved, len(summaries))
+
+    if summary_tweet is None:
+
+        # Error!
+        logger.critical("Could not generate summary tweet")
+        raise FatalError("Could not generate summary tweet")
 
     _ = tweet_sender(summary_tweet, auth=oauth)
 
@@ -74,7 +90,7 @@ def send_tweets(n_retrieved, summaries, doc_store, dry):
         # Introduce a random delay between the tweets to avoid triggering
         # the Twitter alarm
         delay = random.randint(10, 30)
-        InfoEvent(msg=f"Waiting for {delay} seconds before sending next tweet")
+        logger.info(f"Waiting for {delay} seconds before sending next tweet")
         time.sleep(delay)
 
         this_url, this_tweet_id = tweet_sender(
@@ -83,7 +99,7 @@ def send_tweets(n_retrieved, summaries, doc_store, dry):
 
         if this_url is not None:
             if s["url"]:
-                InfoEvent(msg=f"Sending URL as reply to tweet {this_tweet_id}")
+                logger.info(f"Sending URL as reply to tweet {this_tweet_id}")
                 time.sleep(2)
                 tweet_sender(
                     s["url"], auth=oauth, in_reply_to_tweet_id=this_tweet_id
@@ -97,24 +113,23 @@ def send_tweets(n_retrieved, summaries, doc_store, dry):
             }
 
 
-def _keep_only_new_abstracts(abstracts, doc_store):
-    abstracts["new"] = True
+def _keep_only_new_abstracts(abstracts: pd.DataFrame, doc_store: DocumentStore) -> pd.DataFrame:
+    mask = np.ones(len(abstracts), dtype=bool)
 
-    for i, row in abstracts.iterrows():
+    for idx, (_, row) in enumerate(abstracts.iterrows()):
         if row["arxiv"] in doc_store:
             # Yes, we already processed it. Skip it
-            InfoEvent(
+            logger.info(
                 f"Paper {row['arxiv']} has been already summarized in a previous run",
-                context={"title": row["title"], "score": row["score"]},
+                extra={"title": row["title"], "score": row["score"]},
             )
+            mask[idx] = False
 
-            abstracts.iloc[i] = False
-
-    return abstracts[abstracts["new"]].reset_index(drop=True)
+    return abstracts[mask].reset_index(drop=True)
 
 
-def _summarize_top_abstracts(selected_abstracts):
-    summaries = []
+def _summarize_top_abstracts(selected_abstracts: pd.DataFrame) -> list[dict[str, Any]]:
+    summaries: list[dict[str, Any]] = []
 
     for i, row in selected_abstracts.iloc[:MAX_NUM_PAPERS].iterrows():
         summary, url, img_path = _summarize(row)
@@ -135,16 +150,16 @@ def _summarize_top_abstracts(selected_abstracts):
     return summaries
 
 
-def _summarize(row):
-    chatGPT = ChatGPT()
+def _summarize(row: pd.Series) -> tuple[str, str, str | None]:
+    openai_model = OpenAI()
 
-    summary = chatGPT.summarize_abstract(row["abstract"])
+    summary = openai_model.summarize_abstract(row["abstract"])
 
     url = _SOURCES[SOURCE].get_url(row["arxiv"])
 
-    InfoEvent(
-        msg=f"Processed abstract for {url}",
-        context={"title": row["title"], "score": row["score"]},
+    logger.info(
+        f"Processed abstract for {url}",
+        extra={"title": row["title"], "score": row["score"]},
     )
 
     # Get image from the first page
@@ -153,7 +168,7 @@ def _summarize(row):
     return summary, url, img_path
 
 
-def _gather_abstracts(window_start, window_stop):
+def _gather_abstracts(window_start: int, window_stop: int) -> tuple[pd.DataFrame, int]:
     """
     Get all abstracts from arxiv-sanity from the last 48 hours above the threshold
 
@@ -166,15 +181,15 @@ def _gather_abstracts(window_start, window_stop):
     start = now - timedelta(hours=window_start)
     end = now - timedelta(hours=window_stop)
 
-    InfoEvent(msg=f"Considering time interval {start} to {end} UTC")
+    logger.info(f"Considering time interval {start} to {end} UTC")
 
     abstracts = get_all_abstracts_func(after=start, before=end)  # type: pd.DataFrame
 
     n_retrieved = abstracts.shape[0]
 
     if n_retrieved == 0:
-        InfoEvent(
-            msg=f"No abstract in the time window {start} - {end} before filtering for score."
+        logger.info(
+            f"No abstract in the time window {start} - {end} before filtering for score."
         )
 
         return abstracts, 0
@@ -186,13 +201,13 @@ def _gather_abstracts(window_start, window_stop):
     abstracts = abstracts[idx].reset_index(drop=True)
 
     if abstracts.shape[0] == 0:
-        InfoEvent(
-            msg=f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        logger.info(
+            f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
         )
         return abstracts, 0
     else:
-        InfoEvent(
-            msg=f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        logger.info(
+            f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
         )
 
     return abstracts, n_retrieved

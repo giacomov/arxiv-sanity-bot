@@ -2,7 +2,8 @@ from unittest.mock import patch, Mock
 
 import pytest
 
-from arxiv_sanity_bot.models.chatGPT import ChatGPT
+from arxiv_sanity_bot.models.openai import OpenAI
+from arxiv_sanity_bot.logger import FatalError
 
 
 def test_summarize_abstract():
@@ -18,8 +19,8 @@ def test_summarize_abstract():
         mock_client.chat.completions.create.return_value = mock_completion
         mock_openai.return_value = mock_client
         
-        chatgpt = ChatGPT()
-        summary = chatgpt.summarize_abstract(abstract)
+        openai_model = OpenAI()
+        summary = openai_model.summarize_abstract(abstract)
         assert summary == expected_summary
 
     # Test long summary case
@@ -32,7 +33,7 @@ def test_summarize_abstract():
         mock_client = Mock()
         mock_client.chat.completions.create.return_value = mock_long_completion
         mock_openai.return_value = mock_client
-        
-        chatgpt = ChatGPT()
-        with pytest.raises(SystemExit):
-            chatgpt.summarize_abstract(abstract)
+
+        openai_model = OpenAI()
+        with pytest.raises(FatalError):
+            openai_model.summarize_abstract(abstract)
