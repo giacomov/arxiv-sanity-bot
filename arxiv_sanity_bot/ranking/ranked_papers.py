@@ -299,6 +299,9 @@ def _papers_to_dataframe(papers: list[RankedPaper]) -> pd.DataFrame:
             "abstract": paper.abstract,
             "published_on": published_dt if published_dt else datetime.now(),
             "score": paper.score,
+            "alphaxiv_rank": paper.alphaxiv_rank,
+            "hf_rank": paper.hf_rank,
+            "average_rank": paper.average_rank,
         })
 
     return pd.DataFrame(rows)
