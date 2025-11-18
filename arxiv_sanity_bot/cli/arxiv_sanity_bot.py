@@ -84,7 +84,7 @@ def send_tweets(n_retrieved: int, summaries: list[dict[str, Any]], doc_store: Do
         logger.critical("Could not generate summary tweet")
         raise FatalError("Could not generate summary tweet")
 
-    _ = tweet_sender(summary_tweet, auth=oauth)
+    summary_tweet_url, summary_tweet_id = tweet_sender(summary_tweet, auth=oauth)
 
     for s in summaries[::-1]:
         # Introduce a random delay between the tweets to avoid triggering
@@ -94,7 +94,7 @@ def send_tweets(n_retrieved: int, summaries: list[dict[str, Any]], doc_store: Do
         time.sleep(delay)
 
         this_url, this_tweet_id = tweet_sender(
-            s["tweet"], auth=oauth, img_path=s["image"]
+            s["tweet"], auth=oauth, img_path=s["image"], in_reply_to_tweet_id=summary_tweet_id
         )
 
         if this_url is not None:

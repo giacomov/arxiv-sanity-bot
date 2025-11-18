@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 # Papers under this score will not be posted
 # NOTE: Score system changed - now 1-2 points (ranked sources) instead of Altmetric 0-100+
 SCORE_THRESHOLD = 1
-MAX_NUM_PAPERS = 10
+MAX_NUM_PAPERS = 7
 
 # Source for the abstracts
 # Options: "arxiv", "arxiv-sanity", "ranked"
