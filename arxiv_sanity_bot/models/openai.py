@@ -33,7 +33,8 @@ class OpenAI(LLM):
                 "role": "user",
                 "content": f"Summarize the following abstract in one short tweet: `{abstract}`. "
                 "Do not include any hashtag or emojis. Make sure to highlight the innovative contribution of the paper. "
-                f"Use the third person when referring to the authors. Use 255 characters or less.",
+                "Use the third person when referring to the authors. Avoid overly technical language. "
+                f"Use 255 characters or less.",
             },
         ]
 
