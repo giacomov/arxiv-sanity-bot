@@ -117,6 +117,10 @@ def _keep_only_new_abstracts(abstracts: pd.DataFrame, doc_store: DocumentStore) 
     mask = np.ones(len(abstracts), dtype=bool)
 
     for idx, (_, row) in enumerate(abstracts.iterrows()):
+        logger.info(
+            f"Checking if paper {row['arxiv']} has been posted before",
+            extra={"arxiv_id": row["arxiv"], "title": row["title"], "score": row["score"]},
+        )
         if row["arxiv"] in doc_store:
             # Yes, we already processed it. Skip it
             logger.info(
@@ -222,6 +226,19 @@ def _gather_abstracts(window_start: int, window_stop: int) -> tuple[pd.DataFrame
     else:
         logger.info(
             f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+        )
+
+        top_papers = abstracts.head(50)
+        papers_list = []
+        for _, row in top_papers.iterrows():
+            papers_list.append({
+                "arxiv_id": row["arxiv"],
+                "title": row["title"],
+                "score": row["score"]
+            })
+        logger.info(
+            f"Top {len(papers_list)} papers after ranking",
+            extra={"papers": papers_list}
         )
 
     return abstracts, n_retrieved
