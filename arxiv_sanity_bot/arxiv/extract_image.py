@@ -4,6 +4,7 @@ from typing import Any
 import arxiv  # type: ignore
 import pypdf  # type: ignore
 import pypdf.errors  # type: ignore
+import pypdf.filters  # type: ignore
 from PIL import Image
 
 from arxiv_sanity_bot.arxiv.extract_graph import extract_graph
@@ -13,6 +14,10 @@ from arxiv_sanity_bot.logger import get_logger
 
 
 logger = get_logger(__name__)
+
+# Increase pypdf decompression limit to handle highly compressed images
+# Default is 75 MB, we increase to 100 MB to handle edge cases
+pypdf.filters.ZLIB_MAX_OUTPUT_LENGTH = 100_000_000  # 100 MB
 
 
 def extract_first_image(arxiv_id: str, pdf_path: str | None = None) -> str | None:
@@ -138,19 +143,26 @@ def _search_first_image_in_pages(arxiv_id: str, pdf_reader: Any) -> tuple[str | 
 
 
 def _save_first_image(arxiv_id: str, page: Any) -> str | None:
-    for image in page.images:
-        if len(image.data) < 1024:
-            continue
-        logger.info(f"Found first bitmap image for {arxiv_id}")
-        extension = os.path.splitext(image.name)[-1]
-        filename = f"{arxiv_id}_first_image{extension}"
-        with open(filename, "wb") as image_file:
-            image_file.write(image.data)
-        logger.info(f"Bitmap image saved in {filename}")
-        if not has_image_content(filename):
-            os.remove(filename)
-            continue
-        return filename
+    try:
+        for image in page.images:
+            if len(image.data) < 1024:
+                continue
+            logger.info(f"Found first bitmap image for {arxiv_id}")
+            extension = os.path.splitext(image.name)[-1]
+            filename = f"{arxiv_id}_first_image{extension}"
+            with open(filename, "wb") as image_file:
+                image_file.write(image.data)
+            logger.info(f"Bitmap image saved in {filename}")
+            if not has_image_content(filename):
+                os.remove(filename)
+                continue
+            return filename
+    except (pypdf.errors.PyPdfError, pypdf.errors.LimitReachedError, OSError) as e:
+        logger.error(
+            f"Failed to extract bitmap image for {arxiv_id}: {type(e).__name__}",
+            exc_info=True,
+            extra={"arxiv_id": arxiv_id, "error_type": type(e).__name__}
+        )
     return None
 
 
