@@ -75,10 +75,14 @@ def _extract_field(
     for field_name in field_names:
         if field_name in data:
             return data[field_name]
-        if nested_keys:
-            for nested_key in nested_keys:
-                if value := data.get(nested_key, {}).get(field_name):
-                    return value
+
+    if nested_keys:
+        for nested_key in nested_keys:
+            if nested_key in data and isinstance(data[nested_key], dict):
+                for field_name in field_names:
+                    if field_name in data[nested_key]:
+                        return data[nested_key][field_name]
+
     return None
 
 
