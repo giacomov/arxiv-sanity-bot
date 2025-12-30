@@ -25,7 +25,9 @@ def _enlarge_rect(p: dict[str, Any]) -> tuple[Any, Any]:
     return p["rect"] + (-PADDING, -PADDING, PADDING, PADDING), color  # + (-w, -w, w, w)
 
 
-def is_grayish_or_blackish(rgb: tuple[float, float, float], threshold: int = 20) -> bool:
+def is_grayish_or_blackish(
+    rgb: tuple[float, float, float], threshold: int = 20
+) -> bool:
     r, g, b = rgb
     if (max(r, g, b) - min(r, g, b)) <= (threshold / 255):
         # If all values are equal, the color is a shade of gray
@@ -52,7 +54,9 @@ def _is_not_noise(r: Any, color: tuple[float, float, float] | None) -> bool:
 
     # Black lines
     if color is not None and is_grayish_or_blackish(color):
-        good_or_bad = _good_aspect_ratio_gray(ratio) and _good_width_and_height(r) and area > 1000
+        good_or_bad = (
+            _good_aspect_ratio_gray(ratio) and _good_width_and_height(r) and area > 1000
+        )
 
         # print(f"{ratio} {area} {r.width} {r.height} -> {good_or_bad}")
         return good_or_bad
@@ -74,7 +78,9 @@ def _union_all_rectangles(new_rects: list[Any]) -> Any:
     return fitz.Rect(x0, y0, x1, y1)
 
 
-def _regularize_box(x0: float, x1: float, y0: float, y1: float) -> tuple[float, float, float, float]:
+def _regularize_box(
+    x0: float, x1: float, y0: float, y1: float
+) -> tuple[float, float, float, float]:
     """
     Make sure the box is not too crazy in terms of aspect ratio
     """
@@ -99,7 +105,9 @@ def extract_graph(pdf_path: str, arxiv_id: str) -> tuple[str | None, int | None]
     try:
         return _extract_graph(pdf_path, arxiv_id)
     except Exception as e:
-        logger.info("Extraction of graph failed with an exception", extra={"exception": str(e)})
+        logger.info(
+            "Extraction of graph failed with an exception", extra={"exception": str(e)}
+        )
         return None, None
 
 

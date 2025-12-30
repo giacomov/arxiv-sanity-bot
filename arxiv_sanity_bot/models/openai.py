@@ -1,4 +1,3 @@
-import json
 import time
 from typing import Any
 
@@ -65,7 +64,9 @@ class OpenAI(LLM):
                 f"OpenAI could not successfully generate a tweet after {CHATGPT_N_TRIALS}",
                 extra={"abstract": abstract},
             )
-            raise FatalError(f"OpenAI could not successfully generate a tweet after {CHATGPT_N_TRIALS}")
+            raise FatalError(
+                f"OpenAI could not successfully generate a tweet after {CHATGPT_N_TRIALS}"
+            )
 
         return summary
 
