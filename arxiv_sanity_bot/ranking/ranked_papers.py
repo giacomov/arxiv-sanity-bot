@@ -75,14 +75,10 @@ def _extract_field(
     for field_name in field_names:
         if field_name in data:
             return data[field_name]
-
-    if nested_keys:
-        for nested_key in nested_keys:
-            if nested_key in data and isinstance(data[nested_key], dict):
-                for field_name in field_names:
-                    if field_name in data[nested_key]:
-                        return data[nested_key][field_name]
-
+        if nested_keys:
+            for nested_key in nested_keys:
+                if value := data.get(nested_key, {}).get(field_name):
+                    return value
     return None
 
 
@@ -108,13 +104,7 @@ def _fetch_alphaxiv_page(page_num: int, days: int = 7, page_size: int = ALPHAXIV
         data = response.json()
         raw_papers = data.get("papers", [])
 
-        papers = []
-        for raw_paper in raw_papers:
-            paper = _from_alphaxiv(raw_paper)
-            if paper:
-                papers.append(paper)
-
-        return papers
+        return [p for p in (_from_alphaxiv(raw) for raw in raw_papers) if p]
     except requests.exceptions.RequestException as e:
         logger.error(
             "Failed to fetch from alphaXiv API", exc_info=True, extra={"exception": str(e)}
@@ -161,22 +151,15 @@ def fetch_alphaxiv_papers(
 
     # Apply date filtering if date range is provided
     if after and before:
-        papers_in_date_range = []
-        for paper in papers_with_votes:
-            published_dt = _parse_publication_date(paper.published_on)
-            if published_dt and after <= published_dt <= before:
-                papers_in_date_range.append(paper)
-
-        # Count papers AFTER date filter, BEFORE percentile filter
-        count_before_percentile = len(papers_in_date_range)
-        logger.info(f"AlphaXiv papers in date range (before percentile filter): {count_before_percentile}")
-
-        # Use date-filtered papers for percentile calculation
-        papers_to_filter = papers_in_date_range
+        papers_to_filter = [
+            p for p in papers_with_votes
+            if (dt := _parse_publication_date(p.published_on)) and after <= dt <= before
+        ]
     else:
-        # No date filtering - use all papers
         papers_to_filter = papers_with_votes
-        count_before_percentile = len(papers_with_votes)
+
+    count_before_percentile = len(papers_to_filter)
+    logger.info(f"AlphaXiv papers in date range (before percentile filter): {count_before_percentile}")
 
     votes = [p.votes for p in papers_to_filter if p.votes is not None]
     if not votes:
@@ -208,13 +191,7 @@ def _fetch_hf_papers_for_date(date_str: str) -> list[RawPaper]:
         response.raise_for_status()
         raw_papers = response.json()
 
-        papers = []
-        for raw_paper in raw_papers:
-            paper = _from_huggingface(raw_paper)
-            if paper:
-                papers.append(paper)
-
-        return papers
+        return [p for p in (_from_huggingface(raw) for raw in raw_papers) if p]
     except requests.exceptions.RequestException as e:
         logger.error(
             f"Failed to fetch HF papers for {date_str}",
@@ -296,30 +273,31 @@ def _parse_publication_date(date_str: str) -> datetime | None:
         return None
 
 
+def _make_timezone_aware(dt: datetime, reference_tz) -> datetime:
+    return dt if dt.tzinfo else dt.replace(tzinfo=reference_tz)
+
+
 def _filter_by_date_range(
     papers: list[RankedPaper],
     after: datetime,
     before: datetime
 ) -> list[RankedPaper]:
-    filtered_papers = []
-
+    filtered = []
     for paper in papers:
-        published_dt = _parse_publication_date(paper.published_on)
-
-        if not published_dt:
+        if not (published_dt := _parse_publication_date(paper.published_on)):
             logger.info(
                 f"Could not parse date for {paper.arxiv_id}, skipping date filter",
                 extra={"date": paper.published_on},
             )
             continue
 
-        after_aware = after if after.tzinfo else after.replace(tzinfo=published_dt.tzinfo)
-        before_aware = before if before.tzinfo else before.replace(tzinfo=published_dt.tzinfo)
+        after_aware = _make_timezone_aware(after, published_dt.tzinfo)
+        before_aware = _make_timezone_aware(before, published_dt.tzinfo)
 
         if after_aware <= published_dt <= before_aware:
-            filtered_papers.append(paper)
+            filtered.append(paper)
 
-    return filtered_papers
+    return filtered
 
 
 def _papers_to_dataframe(papers: list[RankedPaper]) -> pd.DataFrame:

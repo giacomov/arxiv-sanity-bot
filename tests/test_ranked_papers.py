@@ -115,10 +115,11 @@ def test_fetch_alphaxiv_papers(mock_fetch_page, raw_paper):
         []
     ]
 
-    papers = fetch_alphaxiv_papers(days=7, max_papers=100, top_percentile=66.6)
+    papers, count = fetch_alphaxiv_papers(days=7, max_papers=100, top_percentile=66.6)
 
     assert len(papers) == 1
     assert papers[0].arxiv_id == "2411.12345"
+    assert count == 3
 
 
 @patch("arxiv_sanity_bot.ranking.ranked_papers._fetch_hf_papers_for_date")
@@ -177,39 +178,46 @@ def test_filter_by_date_range(scored_paper, date_range):
 @patch("arxiv_sanity_bot.ranking.ranked_papers.fetch_alphaxiv_papers")
 @patch("arxiv_sanity_bot.ranking.ranked_papers.fetch_hf_papers_date_range")
 def test_get_all_abstracts_scoring(mock_fetch_hf, mock_fetch_alphaxiv, raw_paper, date_range):
-    mock_fetch_alphaxiv.return_value = [
-        raw_paper(arxiv_id="2411.11111", title="Paper in both"),
-        raw_paper(arxiv_id="2411.22222", title="Paper only in alphaXiv"),
-    ]
+    mock_fetch_alphaxiv.return_value = (
+        [
+            raw_paper(arxiv_id="2411.11111", title="Paper in both"),
+            raw_paper(arxiv_id="2411.22222", title="Paper only in alphaXiv"),
+        ],
+        2  # count before percentile
+    )
     mock_fetch_hf.return_value = [
         raw_paper(arxiv_id="2411.11111", title="Paper in both"),
         raw_paper(arxiv_id="2411.33333", title="Paper only in HF"),
     ]
 
     after, before = date_range
-    df = get_all_abstracts(after, before)
+    df, count = get_all_abstracts(after, before)
 
     assert len(df) == 3
     assert df[df["arxiv"] == "2411.11111"].iloc[0]["score"] == 2
     assert df[df["arxiv"] == "2411.22222"].iloc[0]["score"] == 1
     assert df[df["arxiv"] == "2411.33333"].iloc[0]["score"] == 1
+    assert count == 2
 
 
 @patch("arxiv_sanity_bot.ranking.ranked_papers.fetch_alphaxiv_papers")
 @patch("arxiv_sanity_bot.ranking.ranked_papers.fetch_hf_papers_date_range")
 def test_get_all_abstracts_sorting(mock_fetch_hf, mock_fetch_alphaxiv, raw_paper, date_range):
-    mock_fetch_alphaxiv.return_value = [
-        raw_paper(arxiv_id="2411.aaaaa", title="Paper A"),
-        raw_paper(arxiv_id="2411.bbbbb", title="Paper B"),
-        raw_paper(arxiv_id="2411.ccccc", title="Paper C"),
-    ]
+    mock_fetch_alphaxiv.return_value = (
+        [
+            raw_paper(arxiv_id="2411.aaaaa", title="Paper A"),
+            raw_paper(arxiv_id="2411.bbbbb", title="Paper B"),
+            raw_paper(arxiv_id="2411.ccccc", title="Paper C"),
+        ],
+        3  # count before percentile
+    )
     mock_fetch_hf.return_value = [
         raw_paper(arxiv_id="2411.aaaaa", title="Paper A"),
         raw_paper(arxiv_id="2411.bbbbb", title="Paper B"),
     ]
 
     after, before = date_range
-    df = get_all_abstracts(after, before)
+    df, count = get_all_abstracts(after, before)
 
     assert len(df) == 3
     assert df.iloc[0]["arxiv"] == "2411.aaaaa"
@@ -218,6 +226,7 @@ def test_get_all_abstracts_sorting(mock_fetch_hf, mock_fetch_alphaxiv, raw_paper
     assert df.iloc[1]["score"] == 2
     assert df.iloc[2]["arxiv"] == "2411.ccccc"
     assert df.iloc[2]["score"] == 1
+    assert count == 3
 
 
 def test_get_url():

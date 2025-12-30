@@ -124,8 +124,8 @@ def _fetch_from_arxiv(after_date: datetime, before_date: datetime, max_results: 
             'sortOrder': 'ascending'
         }
 
-        print(params)
-        
+        logger.debug("Fetching from Arxiv API", extra={"params": params})
+
         try:
             response = requests.get("http://export.arxiv.org/api/query", params=params, timeout=30)
             response.raise_for_status()
@@ -133,7 +133,7 @@ def _fetch_from_arxiv(after_date: datetime, before_date: datetime, max_results: 
             root = ET.fromstring(response.content)
             entries = root.findall('{http://www.w3.org/2005/Atom}entry')
 
-            print(f"Fetched {len(entries)} entries from Arxiv API starting at {start}")
+            logger.info(f"Fetched {len(entries)} entries from Arxiv API starting at {start}")
 
             if not entries:
                 if start == 0:
@@ -190,7 +190,7 @@ def _fetch_from_arxiv(after_date: datetime, before_date: datetime, max_results: 
         except ArxivZeroResultsError:
             raise
         except Exception as e:
-            print(f"API error: {e}")
+            logger.error("API error during Arxiv fetch", exc_info=True, extra={"exception": str(e)})
             break
 
     return papers

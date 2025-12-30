@@ -61,10 +61,11 @@ def test_get_all_abstracts():
              'score': [0.8, 0.9]
          })):
 
-        result = get_all_abstracts(after, before)
+        result, count = get_all_abstracts(after, before)
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 2
+        assert count == 2
         assert 'arxiv' in result.columns
         assert 'title' in result.columns
         assert 'abstract' in result.columns
