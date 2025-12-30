@@ -56,14 +56,14 @@ def get_all_abstracts(
     before: datetime,
     max_pages: int = ARXIV_MAX_PAGES,
     chunk_size: int = ARXIV_PAGE_SIZE,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, int]:
 
     rows = _fetch_from_arxiv(after, before, chunk_size * max_pages)
 
     logger.info(f"Fetched {len(rows)} abstracts from Arxiv")
 
     if len(rows) == 0:
-        return pd.DataFrame()
+        return pd.DataFrame(), 0
 
     abstracts = pd.DataFrame(rows)
 
@@ -71,16 +71,18 @@ def get_all_abstracts(
     idx = (abstracts["published_on"] < before) & (abstracts["published_on"] > after)
     abstracts = abstracts[idx].reset_index(drop=True)
 
-    if abstracts.shape[0] > 0:
+    count = abstracts.shape[0]
+
+    if count > 0:
         # Fetch scores
         scores = _fetch_scores(abstracts)
 
         abstracts = abstracts.merge(scores, on="arxiv")
 
-        return abstracts.sort_values(by="score", ascending=False).reset_index(drop=True)
+        return abstracts.sort_values(by="score", ascending=False).reset_index(drop=True), count
 
     else:
-        return abstracts
+        return abstracts, count
 
 
 def _fetch_scores(abstracts: pd.DataFrame) -> pd.DataFrame:

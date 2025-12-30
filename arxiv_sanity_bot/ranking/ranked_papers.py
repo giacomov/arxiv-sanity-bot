@@ -3,6 +3,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import requests
 from tenacity import (
@@ -121,7 +122,13 @@ def _fetch_alphaxiv_page(page_num: int, days: int = 7, page_size: int = ALPHAXIV
         raise AlphaXivAPIError(str(e))
 
 
-def fetch_alphaxiv_papers(days: int = 7, max_papers: int = ALPHAXIV_MAX_PAPERS, top_percentile: float = ALPHAXIV_TOP_PERCENTILE) -> list[RawPaper]:
+def fetch_alphaxiv_papers(
+    days: int = 7,
+    max_papers: int = ALPHAXIV_MAX_PAPERS,
+    top_percentile: float = ALPHAXIV_TOP_PERCENTILE,
+    after: datetime | None = None,
+    before: datetime | None = None,
+) -> tuple[list[RawPaper], int]:
     all_papers: list[RawPaper] = []
     page_num = 0
     max_pages = (max_papers + ALPHAXIV_PAGE_SIZE - 1) // ALPHAXIV_PAGE_SIZE
@@ -150,15 +157,41 @@ def fetch_alphaxiv_papers(days: int = 7, max_papers: int = ALPHAXIV_MAX_PAPERS, 
 
     if not papers_with_votes:
         logger.info("No papers with vote data from alphaXiv")
-        return []
+        return [], 0
 
-    votes = [p.votes for p in papers_with_votes if p.votes is not None]
-    import numpy as np
+    # Apply date filtering if date range is provided
+    if after and before:
+        papers_in_date_range = []
+        for paper in papers_with_votes:
+            published_dt = _parse_publication_date(paper.published_on)
+            if published_dt and after <= published_dt <= before:
+                papers_in_date_range.append(paper)
+
+        # Count papers AFTER date filter, BEFORE percentile filter
+        count_before_percentile = len(papers_in_date_range)
+        logger.info(f"AlphaXiv papers in date range (before percentile filter): {count_before_percentile}")
+
+        # Use date-filtered papers for percentile calculation
+        papers_to_filter = papers_in_date_range
+    else:
+        # No date filtering - use all papers
+        papers_to_filter = papers_with_votes
+        count_before_percentile = len(papers_with_votes)
+
+    votes = [p.votes for p in papers_to_filter if p.votes is not None]
+    if not votes:
+        logger.info("No papers with votes to apply percentile filter")
+        return [], count_before_percentile
+
     vote_threshold = np.percentile(votes, top_percentile)
 
-    filtered_papers = [p for p in papers_with_votes if p.votes is not None and p.votes >= vote_threshold]
-    logger.info(f"Fetched {len(all_papers)} papers from alphaXiv, {len(filtered_papers)} in top {100-top_percentile}% (>={vote_threshold:.0f} votes)")
-    return filtered_papers[:max_papers]
+    filtered_papers = [p for p in papers_to_filter if p.votes is not None and p.votes >= vote_threshold]
+    logger.info(
+        f"Fetched {len(all_papers)} papers from alphaXiv, "
+        f"{count_before_percentile} in date range, "
+        f"{len(filtered_papers)} after percentile filter (top {100-top_percentile}%, >={vote_threshold:.0f} votes)"
+    )
+    return filtered_papers[:max_papers], count_before_percentile
 
 
 @retry(
@@ -307,25 +340,31 @@ def _papers_to_dataframe(papers: list[RankedPaper]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def get_all_abstracts(after: datetime, before: datetime) -> pd.DataFrame:
+def get_all_abstracts(after: datetime, before: datetime) -> tuple[pd.DataFrame, int]:
     if after >= before:
         logger.info("Invalid time window, returning empty DataFrame")
-        return pd.DataFrame()
+        return pd.DataFrame(), 0
 
-    alphaxiv_papers = fetch_alphaxiv_papers(days=7, max_papers=ALPHAXIV_MAX_PAPERS, top_percentile=ALPHAXIV_TOP_PERCENTILE)
+    alphaxiv_papers, alphaxiv_count_before_percentile = fetch_alphaxiv_papers(
+        days=7,
+        max_papers=ALPHAXIV_MAX_PAPERS,
+        top_percentile=ALPHAXIV_TOP_PERCENTILE,
+        after=after,
+        before=before
+    )
     hf_papers = fetch_hf_papers_date_range(days=7)
 
     scored_papers = _merge_and_score_papers(alphaxiv_papers, hf_papers)
 
     if not scored_papers:
         logger.info("No papers found in time window")
-        return pd.DataFrame()
+        return pd.DataFrame(), 0
 
     filtered_papers = _filter_by_date_range(scored_papers, after, before)
 
     if not filtered_papers:
         logger.info("No papers in time window after date filtering")
-        return pd.DataFrame()
+        return pd.DataFrame(), alphaxiv_count_before_percentile
 
     df = _papers_to_dataframe(filtered_papers)
 
@@ -334,10 +373,11 @@ def get_all_abstracts(after: datetime, before: datetime) -> pd.DataFrame:
         extra={
             "score_2": len(df[df["score"] == 2]),
             "score_1": len(df[df["score"] == 1]),
+            "alphaxiv_count_before_percentile": alphaxiv_count_before_percentile,
         },
     )
 
-    return df
+    return df, alphaxiv_count_before_percentile
 
 
 def get_url(arxiv_id: str) -> str:

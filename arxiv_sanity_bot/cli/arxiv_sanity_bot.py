@@ -203,16 +203,14 @@ def _gather_abstracts(window_start: int, window_stop: int) -> tuple[pd.DataFrame
 
     logger.info(f"Considering time interval {start} to {end} UTC")
 
-    abstracts = get_all_abstracts_func(after=start, before=end)  # type: pd.DataFrame
+    abstracts, alphaxiv_count = get_all_abstracts_func(after=start, before=end)
 
-    n_retrieved = abstracts.shape[0]
-
-    if n_retrieved == 0:
+    if abstracts.shape[0] == 0:
         logger.info(
             f"No abstract in the time window {start} - {end} before filtering for score."
         )
 
-        return abstracts, 0
+        return abstracts, alphaxiv_count
 
     # Threshold on score
     idx = abstracts["score"] >= SCORE_THRESHOLD
@@ -222,10 +220,11 @@ def _gather_abstracts(window_start: int, window_stop: int) -> tuple[pd.DataFrame
         logger.info(
             f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
         )
-        return abstracts, 0
+        return abstracts, alphaxiv_count
     else:
         logger.info(
-            f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+            f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}. "
+            f"Total AlphaXiv papers considered (before percentile filter): {alphaxiv_count}"
         )
 
         top_papers = abstracts.head(50)
@@ -241,7 +240,7 @@ def _gather_abstracts(window_start: int, window_stop: int) -> tuple[pd.DataFrame
             extra={"papers": papers_list}
         )
 
-    return abstracts, n_retrieved
+    return abstracts, alphaxiv_count
 
 
 if __name__ == "__main__":
