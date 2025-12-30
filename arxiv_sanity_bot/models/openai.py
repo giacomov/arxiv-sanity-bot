@@ -1,4 +1,3 @@
-import json
 import time
 from typing import Any
 
@@ -27,14 +26,14 @@ class OpenAI(LLM):
             {
                 "role": "system",
                 "content": "You are a twitter chat bot. Write engaging tweets with a maximum length of "
-                "255 characters. Be concise, informative, and engaging.",
+                f"{TWEET_TEXT_LENGTH} characters. Be concise, informative, and engaging.",
             },
             {
                 "role": "user",
                 "content": f"Summarize the following abstract in one short tweet: `{abstract}`. "
                 "Do not include any hashtag or emojis. Make sure to highlight the innovative contribution of the paper. "
                 "Use the third person when referring to the authors. Avoid overly technical language. "
-                f"Use 255 characters or less.",
+                f"Use {TWEET_TEXT_LENGTH} characters or less.",
             },
         ]
 
@@ -65,7 +64,9 @@ class OpenAI(LLM):
                 f"OpenAI could not successfully generate a tweet after {CHATGPT_N_TRIALS}",
                 extra={"abstract": abstract},
             )
-            raise FatalError(f"OpenAI could not successfully generate a tweet after {CHATGPT_N_TRIALS}")
+            raise FatalError(
+                f"OpenAI could not successfully generate a tweet after {CHATGPT_N_TRIALS}"
+            )
 
         return summary
 
@@ -96,7 +97,7 @@ class OpenAI(LLM):
         for i in range(CHATGPT_N_TRIALS):
 
             try:
-                print(json.dumps(history, indent=4))
+                logger.debug("Calling OpenAI API", extra={"history": history})
 
                 completion = self._client.chat.completions.create(
                     model="gpt-5-mini",

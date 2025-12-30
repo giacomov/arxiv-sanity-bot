@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 import dotenv
+
 dotenv.load_dotenv()
 
 from arxiv_sanity_bot.arxiv import arxiv_abstracts  # noqa: E402
@@ -64,14 +65,26 @@ def bot(window_start, window_stop, dry):
     logger.info("Bot finishing")
 
 
-def send_tweets(n_retrieved: int, summaries: list[dict[str, Any]], doc_store: DocumentStore, dry: bool):
+def send_tweets(
+    n_retrieved: int,
+    summaries: list[dict[str, Any]],
+    doc_store: DocumentStore,
+    dry: bool,
+):
 
     # Send the tweets
     oauth = TwitterOAuth1()
 
     if dry:
-        def tweet_sender(tweet: str, auth: TwitterOAuth1, img_path: str | None = None, in_reply_to_tweet_id: int | None = None) -> tuple[str | None, int | None]:
+
+        def tweet_sender(
+            tweet: str,
+            auth: TwitterOAuth1,
+            img_path: str | None = None,
+            in_reply_to_tweet_id: int | None = None,
+        ) -> tuple[str | None, int | None]:
             return ("https://fake.url", 123456789)
+
     else:
         tweet_sender = send_tweet
 
@@ -94,16 +107,17 @@ def send_tweets(n_retrieved: int, summaries: list[dict[str, Any]], doc_store: Do
         time.sleep(delay)
 
         this_url, this_tweet_id = tweet_sender(
-            s["tweet"], auth=oauth, img_path=s["image"], in_reply_to_tweet_id=summary_tweet_id
+            s["tweet"],
+            auth=oauth,
+            img_path=s["image"],
+            in_reply_to_tweet_id=summary_tweet_id,
         )
 
         if this_url is not None:
             if s["url"]:
                 logger.info(f"Sending URL as reply to tweet {this_tweet_id}")
                 time.sleep(2)
-                tweet_sender(
-                    s["url"], auth=oauth, in_reply_to_tweet_id=this_tweet_id
-                )
+                tweet_sender(s["url"], auth=oauth, in_reply_to_tweet_id=this_tweet_id)
 
             doc_store[s["arxiv"]] = {
                 "tweet_id": this_tweet_id,
@@ -113,13 +127,19 @@ def send_tweets(n_retrieved: int, summaries: list[dict[str, Any]], doc_store: Do
             }
 
 
-def _keep_only_new_abstracts(abstracts: pd.DataFrame, doc_store: DocumentStore) -> pd.DataFrame:
+def _keep_only_new_abstracts(
+    abstracts: pd.DataFrame, doc_store: DocumentStore
+) -> pd.DataFrame:
     mask = np.ones(len(abstracts), dtype=bool)
 
     for idx, (_, row) in enumerate(abstracts.iterrows()):
         logger.info(
             f"Checking if paper {row['arxiv']} has been posted before",
-            extra={"arxiv_id": row["arxiv"], "title": row["title"], "score": row["score"]},
+            extra={
+                "arxiv_id": row["arxiv"],
+                "title": row["title"],
+                "score": row["score"],
+            },
         )
         if row["arxiv"] in doc_store:
             # Yes, we already processed it. Skip it
@@ -147,8 +167,12 @@ def _summarize_top_abstracts(selected_abstracts: pd.DataFrame) -> list[dict[str,
                 "alphaxiv_rank": row.get("alphaxiv_rank"),
                 "hf_rank": row.get("hf_rank"),
                 "average_rank": row.get("average_rank"),
-                "published_on": row["published_on"].isoformat() if hasattr(row["published_on"], "isoformat") else str(row["published_on"]),
-            }
+                "published_on": (
+                    row["published_on"].isoformat()
+                    if hasattr(row["published_on"], "isoformat")
+                    else str(row["published_on"])
+                ),
+            },
         )
 
     for i, row in top_papers.iterrows():
@@ -203,16 +227,14 @@ def _gather_abstracts(window_start: int, window_stop: int) -> tuple[pd.DataFrame
 
     logger.info(f"Considering time interval {start} to {end} UTC")
 
-    abstracts = get_all_abstracts_func(after=start, before=end)  # type: pd.DataFrame
+    abstracts, alphaxiv_count = get_all_abstracts_func(after=start, before=end)
 
-    n_retrieved = abstracts.shape[0]
-
-    if n_retrieved == 0:
+    if abstracts.shape[0] == 0:
         logger.info(
             f"No abstract in the time window {start} - {end} before filtering for score."
         )
 
-        return abstracts, 0
+        return abstracts, alphaxiv_count
 
     # Threshold on score
     idx = abstracts["score"] >= SCORE_THRESHOLD
@@ -222,26 +244,25 @@ def _gather_abstracts(window_start: int, window_stop: int) -> tuple[pd.DataFrame
         logger.info(
             f"No abstract in the time window {start} - {end} above score {SCORE_THRESHOLD}"
         )
-        return abstracts, 0
+        return abstracts, alphaxiv_count
     else:
         logger.info(
-            f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}"
+            f"Found {abstracts.shape[0]} abstracts in the time window {start} - {end} above score {SCORE_THRESHOLD}. "
+            f"Total AlphaXiv papers considered (before percentile filter): {alphaxiv_count}"
         )
 
         top_papers = abstracts.head(50)
         papers_list = []
         for _, row in top_papers.iterrows():
-            papers_list.append({
-                "arxiv_id": row["arxiv"],
-                "title": row["title"],
-                "score": row["score"]
-            })
+            papers_list.append(
+                {"arxiv_id": row["arxiv"], "title": row["title"], "score": row["score"]}
+            )
         logger.info(
             f"Top {len(papers_list)} papers after ranking",
-            extra={"papers": papers_list}
+            extra={"papers": papers_list},
         )
 
-    return abstracts, n_retrieved
+    return abstracts, alphaxiv_count
 
 
 if __name__ == "__main__":

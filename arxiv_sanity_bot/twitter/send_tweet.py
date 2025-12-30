@@ -32,7 +32,7 @@ def _create_tweet(
         extra={
             "has_media": media_ids is not None,
             "is_reply": in_reply_to_tweet_id is not None,
-        }
+        },
     )
     return client.create_tweet(
         text=text, media_ids=media_ids, in_reply_to_tweet_id=in_reply_to_tweet_id
@@ -94,7 +94,9 @@ def send_tweet(
 
     logger.info(f"Sent tweet {tweet}")
 
-    tweet_url = f"https://twitter.com/user/status/{response.data['id']}" if response else None
+    tweet_url = (
+        f"https://twitter.com/user/status/{response.data['id']}" if response else None
+    )
     tweet_id = response.data["id"] if response else None
 
     return tweet_url, tweet_id
@@ -106,7 +108,9 @@ def _upload_image(auth: Any, img_path: str | None) -> list[str]:
     if img_path is not None:
         try:
             upload = _upload_image_with_retry(api, img_path)
-            logger.info(f"Uploaded image {img_path} as media_id {upload.media_id_string}")
+            logger.info(
+                f"Uploaded image {img_path} as media_id {upload.media_id_string}"
+            )
             media_ids.append(upload.media_id_string)
         except tweepy.errors.TweepyException:
             logger.error(

@@ -40,52 +40,60 @@ def test_get_all_abstracts():
 
     mock_rows = [
         {
-            'arxiv': '2401.00001',
-            'title': 'Test Paper 1',
-            'abstract': 'Test abstract 1',
-            'published_on': datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
-            'categories': ['cs.LG']
+            "arxiv": "2401.00001",
+            "title": "Test Paper 1",
+            "abstract": "Test abstract 1",
+            "published_on": datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
+            "categories": ["cs.LG"],
         },
         {
-            'arxiv': '2401.00002',
-            'title': 'Test Paper 2',
-            'abstract': 'Test abstract 2',
-            'published_on': datetime(2024, 1, 1, 15, 0, 0, tzinfo=timezone.utc),
-            'categories': ['cs.CV']
-        }
+            "arxiv": "2401.00002",
+            "title": "Test Paper 2",
+            "abstract": "Test abstract 2",
+            "published_on": datetime(2024, 1, 1, 15, 0, 0, tzinfo=timezone.utc),
+            "categories": ["cs.CV"],
+        },
     ]
 
-    with patch('arxiv_sanity_bot.arxiv.arxiv_abstracts._fetch_from_arxiv', return_value=mock_rows), \
-         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts._fetch_scores', return_value=pd.DataFrame({
-             'arxiv': ['2401.00001', '2401.00002'],
-             'score': [0.8, 0.9]
-         })):
+    with (
+        patch(
+            "arxiv_sanity_bot.arxiv.arxiv_abstracts._fetch_from_arxiv",
+            return_value=mock_rows,
+        ),
+        patch(
+            "arxiv_sanity_bot.arxiv.arxiv_abstracts._fetch_scores",
+            return_value=pd.DataFrame(
+                {"arxiv": ["2401.00001", "2401.00002"], "score": [0.8, 0.9]}
+            ),
+        ),
+    ):
 
-        result = get_all_abstracts(after, before)
+        result, count = get_all_abstracts(after, before)
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 2
-        assert 'arxiv' in result.columns
-        assert 'title' in result.columns
-        assert 'abstract' in result.columns
-        assert 'published_on' in result.columns
-        assert 'score' in result.columns
+        assert count == 2
+        assert "arxiv" in result.columns
+        assert "title" in result.columns
+        assert "abstract" in result.columns
+        assert "published_on" in result.columns
+        assert "score" in result.columns
 
-        assert result.iloc[0]['score'] >= result.iloc[1]['score']
+        assert result.iloc[0]["score"] >= result.iloc[1]["score"]
 
-        assert pd.api.types.is_datetime64_any_dtype(result['published_on'])
+        assert pd.api.types.is_datetime64_any_dtype(result["published_on"])
 
 
 def test_fetch_from_arxiv_retries_on_zero_results():
     after = datetime(2024, 1, 1, tzinfo=timezone.utc)
     before = datetime(2024, 1, 2, tzinfo=timezone.utc)
 
-    empty_xml = '''<?xml version="1.0" encoding="UTF-8"?>
+    empty_xml = """<?xml version="1.0" encoding="UTF-8"?>
     <feed xmlns="http://www.w3.org/2005/Atom">
         <title>ArXiv Query</title>
-    </feed>'''
+    </feed>"""
 
-    xml_with_entry = '''<?xml version="1.0" encoding="UTF-8"?>
+    xml_with_entry = """<?xml version="1.0" encoding="UTF-8"?>
     <feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom">
         <entry>
             <id>http://arxiv.org/abs/2401.00001v1</id>
@@ -94,27 +102,29 @@ def test_fetch_from_arxiv_retries_on_zero_results():
             <published>2024-01-01T10:00:00Z</published>
             <arxiv:primary_category term="cs.LG"/>
         </entry>
-    </feed>'''
+    </feed>"""
 
     mock_response_empty = Mock()
-    mock_response_empty.content = empty_xml.encode('utf-8')
+    mock_response_empty.content = empty_xml.encode("utf-8")
     mock_response_empty.raise_for_status = Mock()
 
     mock_response_with_data = Mock()
-    mock_response_with_data.content = xml_with_entry.encode('utf-8')
+    mock_response_with_data.content = xml_with_entry.encode("utf-8")
     mock_response_with_data.raise_for_status = Mock()
 
-    with patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.requests.get') as mock_get, \
-         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.time.sleep') as mock_sleep, \
-         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.logger') as mock_logger:
+    with (
+        patch("arxiv_sanity_bot.arxiv.arxiv_abstracts.requests.get") as mock_get,
+        patch("arxiv_sanity_bot.arxiv.arxiv_abstracts.time.sleep") as mock_sleep,
+        patch("arxiv_sanity_bot.arxiv.arxiv_abstracts.logger") as mock_logger,
+    ):
 
         mock_get.side_effect = [mock_response_empty, mock_response_with_data]
 
         result = _fetch_from_arxiv(after, before, max_results=1000)
 
         assert len(result) == 1
-        assert result[0]['arxiv'] == '2401.00001'
-        assert result[0]['title'] == 'Test Paper'
+        assert result[0]["arxiv"] == "2401.00001"
+        assert result[0]["title"] == "Test Paper"
 
         assert mock_get.call_count == 2
         mock_logger.error.assert_called_once()
@@ -125,19 +135,26 @@ def test_fetch_from_arxiv_raises_after_max_retries():
     after = datetime(2024, 1, 1, tzinfo=timezone.utc)
     before = datetime(2024, 1, 2, tzinfo=timezone.utc)
 
-    empty_xml = '''<?xml version="1.0" encoding="UTF-8"?>
+    empty_xml = """<?xml version="1.0" encoding="UTF-8"?>
     <feed xmlns="http://www.w3.org/2005/Atom">
         <title>ArXiv Query</title>
-    </feed>'''
+    </feed>"""
 
     mock_response = Mock()
-    mock_response.content = empty_xml.encode('utf-8')
+    mock_response.content = empty_xml.encode("utf-8")
     mock_response.raise_for_status = Mock()
 
-    with patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.requests.get', return_value=mock_response), \
-         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.time.sleep'), \
-         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.logger'), \
-         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.ARXIV_ZERO_RESULTS_MAX_RETRIES', 3):
+    with (
+        patch(
+            "arxiv_sanity_bot.arxiv.arxiv_abstracts.requests.get",
+            return_value=mock_response,
+        ),
+        patch("arxiv_sanity_bot.arxiv.arxiv_abstracts.time.sleep"),
+        patch("arxiv_sanity_bot.arxiv.arxiv_abstracts.logger"),
+        patch(
+            "arxiv_sanity_bot.arxiv.arxiv_abstracts.ARXIV_ZERO_RESULTS_MAX_RETRIES", 3
+        ),
+    ):
 
         with pytest.raises(ArxivZeroResultsError):
             _fetch_from_arxiv(after, before, max_results=1000)
@@ -150,9 +167,14 @@ def test_fetch_from_arxiv_does_not_retry_on_api_errors():
     mock_response = Mock()
     mock_response.raise_for_status.side_effect = Exception("API Error")
 
-    with patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.requests.get', return_value=mock_response), \
-         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.time.sleep') as mock_sleep, \
-         patch('arxiv_sanity_bot.arxiv.arxiv_abstracts.logger'):
+    with (
+        patch(
+            "arxiv_sanity_bot.arxiv.arxiv_abstracts.requests.get",
+            return_value=mock_response,
+        ),
+        patch("arxiv_sanity_bot.arxiv.arxiv_abstracts.time.sleep") as mock_sleep,
+        patch("arxiv_sanity_bot.arxiv.arxiv_abstracts.logger"),
+    ):
 
         result = _fetch_from_arxiv(after, before, max_results=1000)
 

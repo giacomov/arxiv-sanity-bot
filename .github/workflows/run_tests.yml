@@ -1,13 +1,41 @@
-name: Run tests
+name: CI
 
 on:
+  pull_request:
   push:
     branches:
       - main
   workflow_dispatch:
 
 jobs:
-  run_arxiv_sanity_bot:
+  pre-commit:
+    name: Pre-commit checks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true
+
+    - name: Install dependencies
+      run: |
+        uv sync --group dev
+
+    - name: Run pre-commit hooks
+      run: |
+        uv run pre-commit run --all-files
+
+  tests:
+    name: Run tests
     runs-on: ubuntu-latest
     environment: dev
 
@@ -18,7 +46,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
+        python-version: '3.13'
 
     - name: Install uv
       uses: astral-sh/setup-uv@v4

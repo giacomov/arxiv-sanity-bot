@@ -21,7 +21,9 @@ class DocumentStore:
         self._client = firestore.client()
 
     @classmethod
-    def from_env_variable(cls, env_variable_name: str = "FIREBASE_CREDENTIALS") -> "DocumentStore":
+    def from_env_variable(
+        cls, env_variable_name: str = "FIREBASE_CREDENTIALS"
+    ) -> "DocumentStore":
         return cls(
             firebase_credentials=cls._decode_credentials_from_env_variable(
                 env_variable_name

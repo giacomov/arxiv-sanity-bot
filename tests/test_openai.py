@@ -18,7 +18,7 @@ def test_summarize_abstract():
         mock_client = Mock()
         mock_client.chat.completions.create.return_value = mock_completion
         mock_openai.return_value = mock_client
-        
+
         openai_model = OpenAI()
         summary = openai_model.summarize_abstract(abstract)
         assert summary == expected_summary

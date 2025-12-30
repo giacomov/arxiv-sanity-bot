@@ -7,6 +7,7 @@ import warnings
 
 class FatalError(Exception):
     """Exception raised for fatal errors that should stop the bot."""
+
     pass
 
 
@@ -14,24 +15,42 @@ def _get_logging_level(default: str = "DEBUG") -> int:
     lv = os.environ.get("LOG_LEVEL", default)
 
     try:
-        lv = getattr(logging, lv)
+        level = getattr(logging, lv)
     except AttributeError:
         warnings.warn(
             f"LOG_LEVEL has an invalid value of {lv}. Defaulting to {default}"
         )
         return getattr(logging, default)
     else:
-        return lv
+        return level
 
 
 class JSONFormatter(logging.Formatter):
     """Custom formatter that outputs JSON-structured logs."""
 
     STANDARD_ATTRS = {
-        'name', 'msg', 'args', 'created', 'filename', 'funcName', 'levelname',
-        'levelno', 'lineno', 'module', 'msecs', 'message', 'pathname', 'process',
-        'processName', 'relativeCreated', 'thread', 'threadName', 'exc_info',
-        'exc_text', 'stack_info', 'taskName'
+        "name",
+        "msg",
+        "args",
+        "created",
+        "filename",
+        "funcName",
+        "levelname",
+        "levelno",
+        "lineno",
+        "module",
+        "msecs",
+        "message",
+        "pathname",
+        "process",
+        "processName",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "exc_info",
+        "exc_text",
+        "stack_info",
+        "taskName",
     }
 
     def format(self, record: logging.LogRecord) -> str:
@@ -49,7 +68,7 @@ class JSONFormatter(logging.Formatter):
         extra_fields = {
             key: value
             for key, value in record.__dict__.items()
-            if key not in self.STANDARD_ATTRS and not key.startswith('_')
+            if key not in self.STANDARD_ATTRS and not key.startswith("_")
         }
         if extra_fields:
             log_dict["context"] = extra_fields

@@ -65,30 +65,55 @@ def _convert_to_jpeg(input_path: str, output_path: str):
         img.convert("RGB").save(output_path, "JPEG", quality=85)
 
 
-def select_first_image(graph_file: str | None, graph_page_number: int | None, image_file: str | None, image_page_number: int | None) -> str | None:
-    logger.info("Found both bitmap and graph images. Selecting the one that comes first")
+def select_first_image(
+    graph_file: str | None,
+    graph_page_number: int | None,
+    image_file: str | None,
+    image_page_number: int | None,
+) -> str | None:
+    logger.info(
+        "Found both bitmap and graph images. Selecting the one that comes first"
+    )
     if image_page_number is not None and graph_page_number is not None:
         return image_file if image_page_number <= graph_page_number else graph_file
     return image_file or graph_file
 
 
-def select_graph(graph_file: str | None, graph_page_number: int | None, image_file: str | None, image_page_number: int | None) -> str | None:
+def select_graph(
+    graph_file: str | None,
+    graph_page_number: int | None,
+    image_file: str | None,
+    image_page_number: int | None,
+) -> str | None:
     logger.info("Only graph found. Selecting that")
     return graph_file
 
 
-def select_image(graph_file: str | None, graph_page_number: int | None, image_file: str | None, image_page_number: int | None) -> str | None:
+def select_image(
+    graph_file: str | None,
+    graph_page_number: int | None,
+    image_file: str | None,
+    image_page_number: int | None,
+) -> str | None:
     logger.info("Only bitmap image found. Selecting that")
     return image_file
 
 
-def no_image_or_graph(graph_file: str | None, graph_page_number: int | None, image_file: str | None, image_page_number: int | None) -> str | None:
+def no_image_or_graph(
+    graph_file: str | None,
+    graph_page_number: int | None,
+    image_file: str | None,
+    image_page_number: int | None,
+) -> str | None:
     logger.info("NO IMAGE NOR GRAPH FOUND")
     return None
 
 
 def _select_image_or_graph(
-    graph_file: str | None, graph_page_number: int | None, image_file: str | None, image_page_number: int | None
+    graph_file: str | None,
+    graph_page_number: int | None,
+    image_file: str | None,
+    image_page_number: int | None,
 ) -> str | None:
     # My logic
     if image_file is not None and graph_file is not None:
@@ -121,7 +146,9 @@ def extract_image(pdf_path: str, arxiv_id: str) -> tuple[str | None, int]:
     return filename, page_number
 
 
-def _search_first_image_in_pages(arxiv_id: str, pdf_reader: Any) -> tuple[str | None, int]:
+def _search_first_image_in_pages(
+    arxiv_id: str, pdf_reader: Any
+) -> tuple[str | None, int]:
     filename: str | None = None
     page_number: int = -1
 
@@ -161,7 +188,7 @@ def _save_first_image(arxiv_id: str, page: Any) -> str | None:
         logger.error(
             f"Failed to extract bitmap image for {arxiv_id}: {type(e).__name__}",
             exc_info=True,
-            extra={"arxiv_id": arxiv_id, "error_type": type(e).__name__}
+            extra={"arxiv_id": arxiv_id, "error_type": type(e).__name__},
         )
     return None
 

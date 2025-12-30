@@ -19,8 +19,13 @@ from arxiv_sanity_bot.ranking.ranked_papers import (
 
 @pytest.fixture
 def raw_paper():
-    def _make(arxiv_id="2411.12345", title="Test", abstract="Test abstract",
-              published_on="2025-11-10T00:00:00.000Z", votes=None):
+    def _make(
+        arxiv_id="2411.12345",
+        title="Test",
+        abstract="Test abstract",
+        published_on="2025-11-10T00:00:00.000Z",
+        votes=None,
+    ):
         return RawPaper(
             arxiv_id=arxiv_id,
             title=title,
@@ -28,13 +33,20 @@ def raw_paper():
             published_on=published_on,
             votes=votes,
         )
+
     return _make
 
 
 @pytest.fixture
 def scored_paper():
-    def _make(arxiv_id="2411.12345", score=1, alphaxiv_rank=None, hf_rank=None,
-              source=PaperSource.ALPHAXIV, **kwargs):
+    def _make(
+        arxiv_id="2411.12345",
+        score=1,
+        alphaxiv_rank=None,
+        hf_rank=None,
+        source=PaperSource.ALPHAXIV,
+        **kwargs,
+    ):
         return RankedPaper(
             arxiv_id=arxiv_id,
             title=kwargs.get("title", "Test"),
@@ -45,6 +57,7 @@ def scored_paper():
             hf_rank=hf_rank,
             source=source,
         )
+
     return _make
 
 
@@ -54,15 +67,24 @@ def date_range():
 
 
 def test_extract_field_top_level():
-    assert _extract_field({"universal_paper_id": "2411.12345"}, ["universal_paper_id"]) == "2411.12345"
+    assert (
+        _extract_field({"universal_paper_id": "2411.12345"}, ["universal_paper_id"])
+        == "2411.12345"
+    )
 
 
 def test_extract_field_nested():
-    assert _extract_field({"paper": {"id": "2411.67890"}}, ["id"], nested_keys=["paper"]) == "2411.67890"
+    assert (
+        _extract_field({"paper": {"id": "2411.67890"}}, ["id"], nested_keys=["paper"])
+        == "2411.67890"
+    )
 
 
 def test_extract_field_fallback():
-    assert _extract_field({"id": "2411.11111"}, ["universal_paper_id", "id"]) == "2411.11111"
+    assert (
+        _extract_field({"id": "2411.11111"}, ["universal_paper_id", "id"])
+        == "2411.11111"
+    )
 
 
 def test_extract_field_not_found():
@@ -93,12 +115,15 @@ def test_raw_paper_from_huggingface():
     assert paper.title == "HF Paper"
 
 
-@pytest.mark.parametrize("alphaxiv_rank,hf_rank,expected", [
-    (5, 3, 4.0),
-    (5, None, 5.0),
-    (None, 3, 3.0),
-    (None, None, float("inf")),
-])
+@pytest.mark.parametrize(
+    "alphaxiv_rank,hf_rank,expected",
+    [
+        (5, 3, 4.0),
+        (5, None, 5.0),
+        (None, 3, 3.0),
+        (None, None, float("inf")),
+    ],
+)
 def test_scored_paper_average_rank(scored_paper, alphaxiv_rank, hf_rank, expected):
     paper = scored_paper(alphaxiv_rank=alphaxiv_rank, hf_rank=hf_rank)
     assert paper.average_rank == expected
@@ -112,13 +137,14 @@ def test_fetch_alphaxiv_papers(mock_fetch_page, raw_paper):
             raw_paper(arxiv_id="2411.12346", title="Paper 2", votes=5),
             raw_paper(arxiv_id="2411.12347", title="Paper 3", votes=1),
         ],
-        []
+        [],
     ]
 
-    papers = fetch_alphaxiv_papers(days=7, max_papers=100, top_percentile=66.6)
+    papers, count = fetch_alphaxiv_papers(days=7, max_papers=100, top_percentile=66.6)
 
     assert len(papers) == 1
     assert papers[0].arxiv_id == "2411.12345"
+    assert count == 3
 
 
 @patch("arxiv_sanity_bot.ranking.ranked_papers._fetch_hf_papers_for_date")
@@ -176,40 +202,51 @@ def test_filter_by_date_range(scored_paper, date_range):
 
 @patch("arxiv_sanity_bot.ranking.ranked_papers.fetch_alphaxiv_papers")
 @patch("arxiv_sanity_bot.ranking.ranked_papers.fetch_hf_papers_date_range")
-def test_get_all_abstracts_scoring(mock_fetch_hf, mock_fetch_alphaxiv, raw_paper, date_range):
-    mock_fetch_alphaxiv.return_value = [
-        raw_paper(arxiv_id="2411.11111", title="Paper in both"),
-        raw_paper(arxiv_id="2411.22222", title="Paper only in alphaXiv"),
-    ]
+def test_get_all_abstracts_scoring(
+    mock_fetch_hf, mock_fetch_alphaxiv, raw_paper, date_range
+):
+    mock_fetch_alphaxiv.return_value = (
+        [
+            raw_paper(arxiv_id="2411.11111", title="Paper in both"),
+            raw_paper(arxiv_id="2411.22222", title="Paper only in alphaXiv"),
+        ],
+        2,  # count before percentile
+    )
     mock_fetch_hf.return_value = [
         raw_paper(arxiv_id="2411.11111", title="Paper in both"),
         raw_paper(arxiv_id="2411.33333", title="Paper only in HF"),
     ]
 
     after, before = date_range
-    df = get_all_abstracts(after, before)
+    df, count = get_all_abstracts(after, before)
 
     assert len(df) == 3
     assert df[df["arxiv"] == "2411.11111"].iloc[0]["score"] == 2
     assert df[df["arxiv"] == "2411.22222"].iloc[0]["score"] == 1
     assert df[df["arxiv"] == "2411.33333"].iloc[0]["score"] == 1
+    assert count == 2
 
 
 @patch("arxiv_sanity_bot.ranking.ranked_papers.fetch_alphaxiv_papers")
 @patch("arxiv_sanity_bot.ranking.ranked_papers.fetch_hf_papers_date_range")
-def test_get_all_abstracts_sorting(mock_fetch_hf, mock_fetch_alphaxiv, raw_paper, date_range):
-    mock_fetch_alphaxiv.return_value = [
-        raw_paper(arxiv_id="2411.aaaaa", title="Paper A"),
-        raw_paper(arxiv_id="2411.bbbbb", title="Paper B"),
-        raw_paper(arxiv_id="2411.ccccc", title="Paper C"),
-    ]
+def test_get_all_abstracts_sorting(
+    mock_fetch_hf, mock_fetch_alphaxiv, raw_paper, date_range
+):
+    mock_fetch_alphaxiv.return_value = (
+        [
+            raw_paper(arxiv_id="2411.aaaaa", title="Paper A"),
+            raw_paper(arxiv_id="2411.bbbbb", title="Paper B"),
+            raw_paper(arxiv_id="2411.ccccc", title="Paper C"),
+        ],
+        3,  # count before percentile
+    )
     mock_fetch_hf.return_value = [
         raw_paper(arxiv_id="2411.aaaaa", title="Paper A"),
         raw_paper(arxiv_id="2411.bbbbb", title="Paper B"),
     ]
 
     after, before = date_range
-    df = get_all_abstracts(after, before)
+    df, count = get_all_abstracts(after, before)
 
     assert len(df) == 3
     assert df.iloc[0]["arxiv"] == "2411.aaaaa"
@@ -218,6 +255,7 @@ def test_get_all_abstracts_sorting(mock_fetch_hf, mock_fetch_alphaxiv, raw_paper
     assert df.iloc[1]["score"] == 2
     assert df.iloc[2]["arxiv"] == "2411.ccccc"
     assert df.iloc[2]["score"] == 1
+    assert count == 3
 
 
 def test_get_url():

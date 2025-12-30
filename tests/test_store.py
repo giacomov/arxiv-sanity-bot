@@ -40,9 +40,7 @@ def store():
     ).decode()
 
     with patch("firebase_admin.initialize_app"):
-        with patch(
-            "firebase_admin.firestore.client", return_value=MockFirestore()
-        ):
+        with patch("firebase_admin.firestore.client", return_value=MockFirestore()):
             store = DocumentStore.from_env_variable()
 
             yield store

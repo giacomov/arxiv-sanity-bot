@@ -3,6 +3,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import requests
 from tenacity import (
@@ -29,7 +30,9 @@ logger = get_logger(__name__)
 
 
 def _from_alphaxiv(paper: dict[str, Any]) -> RawPaper | None:
-    arxiv_id = _extract_field(paper, ["universal_paper_id", "id"], nested_keys=["paper"])
+    arxiv_id = _extract_field(
+        paper, ["universal_paper_id", "id"], nested_keys=["paper"]
+    )
     if not arxiv_id:
         return None
 
@@ -40,7 +43,10 @@ def _from_alphaxiv(paper: dict[str, Any]) -> RawPaper | None:
         arxiv_id=arxiv_id,
         title=_extract_field(paper, ["title"], nested_keys=["paper"]) or "",
         abstract=_extract_field(paper, ["abstract"], nested_keys=["paper"]) or "",
-        published_on=_extract_field(paper, ["publication_date", "publishedAt"], nested_keys=["paper"]) or "",
+        published_on=_extract_field(
+            paper, ["publication_date", "publishedAt"], nested_keys=["paper"]
+        )
+        or "",
         votes=votes,
     )
 
@@ -54,7 +60,8 @@ def _from_huggingface(paper: dict[str, Any]) -> RawPaper | None:
         arxiv_id=arxiv_id,
         title=_extract_field(paper, ["title"], nested_keys=["paper"]) or "",
         abstract=_extract_field(paper, ["summary"], nested_keys=["paper"]) or "",
-        published_on=_extract_field(paper, ["publishedAt"], nested_keys=["paper"]) or "",
+        published_on=_extract_field(paper, ["publishedAt"], nested_keys=["paper"])
+        or "",
     )
 
 
@@ -67,9 +74,7 @@ class HuggingFaceAPIError(Exception):
 
 
 def _extract_field(
-    data: dict[str, Any],
-    field_names: list[str],
-    nested_keys: list[str] | None = None
+    data: dict[str, Any], field_names: list[str], nested_keys: list[str] | None = None
 ) -> str | None:
     for field_name in field_names:
         if field_name in data:
@@ -91,7 +96,9 @@ def _extract_field(
     wait=wait_exponential(multiplier=1, min=1, max=ALPHAXIV_WAIT_TIME),
     reraise=True,
 )
-def _fetch_alphaxiv_page(page_num: int, days: int = 7, page_size: int = ALPHAXIV_PAGE_SIZE) -> list[RawPaper]:
+def _fetch_alphaxiv_page(
+    page_num: int, days: int = 7, page_size: int = ALPHAXIV_PAGE_SIZE
+) -> list[RawPaper]:
     url = "https://api.alphaxiv.org/papers/v3/feed"
     params = {
         "pageNum": str(page_num),
@@ -107,26 +114,30 @@ def _fetch_alphaxiv_page(page_num: int, days: int = 7, page_size: int = ALPHAXIV
         data = response.json()
         raw_papers = data.get("papers", [])
 
-        papers = []
-        for raw_paper in raw_papers:
-            paper = _from_alphaxiv(raw_paper)
-            if paper:
-                papers.append(paper)
-
-        return papers
+        return [p for p in (_from_alphaxiv(raw) for raw in raw_papers) if p]
     except requests.exceptions.RequestException as e:
         logger.error(
-            "Failed to fetch from alphaXiv API", exc_info=True, extra={"exception": str(e)}
+            "Failed to fetch from alphaXiv API",
+            exc_info=True,
+            extra={"exception": str(e)},
         )
         raise AlphaXivAPIError(str(e))
 
 
-def fetch_alphaxiv_papers(days: int = 7, max_papers: int = ALPHAXIV_MAX_PAPERS, top_percentile: float = ALPHAXIV_TOP_PERCENTILE) -> list[RawPaper]:
+def fetch_alphaxiv_papers(
+    days: int = 7,
+    max_papers: int = ALPHAXIV_MAX_PAPERS,
+    top_percentile: float = ALPHAXIV_TOP_PERCENTILE,
+    after: datetime | None = None,
+    before: datetime | None = None,
+) -> tuple[list[RawPaper], int]:
     all_papers: list[RawPaper] = []
     page_num = 0
     max_pages = (max_papers + ALPHAXIV_PAGE_SIZE - 1) // ALPHAXIV_PAGE_SIZE
 
-    logger.info(f"Fetching alphaXiv papers (last {days} days, max={max_papers}, top_percentile={top_percentile})")
+    logger.info(
+        f"Fetching alphaXiv papers (last {days} days, max={max_papers}, top_percentile={top_percentile})"
+    )
 
     while len(all_papers) < max_papers:
         papers = _fetch_alphaxiv_page(page_num, days, ALPHAXIV_PAGE_SIZE)
@@ -136,7 +147,9 @@ def fetch_alphaxiv_papers(days: int = 7, max_papers: int = ALPHAXIV_MAX_PAPERS, 
             break
 
         all_papers.extend(papers)
-        logger.info(f"Fetched page {page_num}: {len(papers)} papers (total: {len(all_papers)})")
+        logger.info(
+            f"Fetched page {page_num}: {len(papers)} papers (total: {len(all_papers)})"
+        )
 
         page_num += 1
 
@@ -150,15 +163,39 @@ def fetch_alphaxiv_papers(days: int = 7, max_papers: int = ALPHAXIV_MAX_PAPERS, 
 
     if not papers_with_votes:
         logger.info("No papers with vote data from alphaXiv")
-        return []
+        return [], 0
 
-    votes = [p.votes for p in papers_with_votes if p.votes is not None]
-    import numpy as np
+    # Apply date filtering if date range is provided
+    if after and before:
+        papers_to_filter = [
+            p
+            for p in papers_with_votes
+            if (dt := _parse_publication_date(p.published_on)) and after <= dt <= before
+        ]
+    else:
+        papers_to_filter = papers_with_votes
+
+    count_before_percentile = len(papers_to_filter)
+    logger.info(
+        f"AlphaXiv papers in date range (before percentile filter): {count_before_percentile}"
+    )
+
+    votes = [p.votes for p in papers_to_filter if p.votes is not None]
+    if not votes:
+        logger.info("No papers with votes to apply percentile filter")
+        return [], count_before_percentile
+
     vote_threshold = np.percentile(votes, top_percentile)
 
-    filtered_papers = [p for p in papers_with_votes if p.votes is not None and p.votes >= vote_threshold]
-    logger.info(f"Fetched {len(all_papers)} papers from alphaXiv, {len(filtered_papers)} in top {100-top_percentile}% (>={vote_threshold:.0f} votes)")
-    return filtered_papers[:max_papers]
+    filtered_papers = [
+        p for p in papers_to_filter if p.votes is not None and p.votes >= vote_threshold
+    ]
+    logger.info(
+        f"Fetched {len(all_papers)} papers from alphaXiv, "
+        f"{count_before_percentile} in date range, "
+        f"{len(filtered_papers)} after percentile filter (top {100-top_percentile}%, >={vote_threshold:.0f} votes)"
+    )
+    return filtered_papers[:max_papers], count_before_percentile
 
 
 @retry(
@@ -175,13 +212,7 @@ def _fetch_hf_papers_for_date(date_str: str) -> list[RawPaper]:
         response.raise_for_status()
         raw_papers = response.json()
 
-        papers = []
-        for raw_paper in raw_papers:
-            paper = _from_huggingface(raw_paper)
-            if paper:
-                papers.append(paper)
-
-        return papers
+        return [p for p in (_from_huggingface(raw) for raw in raw_papers) if p]
     except requests.exceptions.RequestException as e:
         logger.error(
             f"Failed to fetch HF papers for {date_str}",
@@ -219,8 +250,7 @@ def fetch_hf_papers_date_range(days: int = 7) -> list[RawPaper]:
 
 
 def _merge_and_score_papers(
-    alphaxiv_papers: list[RawPaper],
-    hf_papers: list[RawPaper]
+    alphaxiv_papers: list[RawPaper], hf_papers: list[RawPaper]
 ) -> list[RankedPaper]:
     papers: dict[str, RankedPaper] = {}
 
@@ -263,69 +293,76 @@ def _parse_publication_date(date_str: str) -> datetime | None:
         return None
 
 
+def _make_timezone_aware(dt: datetime, reference_tz) -> datetime:
+    return dt if dt.tzinfo else dt.replace(tzinfo=reference_tz)
+
+
 def _filter_by_date_range(
-    papers: list[RankedPaper],
-    after: datetime,
-    before: datetime
+    papers: list[RankedPaper], after: datetime, before: datetime
 ) -> list[RankedPaper]:
-    filtered_papers = []
-
+    filtered = []
     for paper in papers:
-        published_dt = _parse_publication_date(paper.published_on)
-
-        if not published_dt:
+        if not (published_dt := _parse_publication_date(paper.published_on)):
             logger.info(
                 f"Could not parse date for {paper.arxiv_id}, skipping date filter",
                 extra={"date": paper.published_on},
             )
             continue
 
-        after_aware = after if after.tzinfo else after.replace(tzinfo=published_dt.tzinfo)
-        before_aware = before if before.tzinfo else before.replace(tzinfo=published_dt.tzinfo)
+        after_aware = _make_timezone_aware(after, published_dt.tzinfo)
+        before_aware = _make_timezone_aware(before, published_dt.tzinfo)
 
         if after_aware <= published_dt <= before_aware:
-            filtered_papers.append(paper)
+            filtered.append(paper)
 
-    return filtered_papers
+    return filtered
 
 
 def _papers_to_dataframe(papers: list[RankedPaper]) -> pd.DataFrame:
     rows = []
     for paper in papers:
         published_dt = _parse_publication_date(paper.published_on)
-        rows.append({
-            "arxiv": paper.arxiv_id,
-            "title": paper.title,
-            "abstract": paper.abstract,
-            "published_on": published_dt if published_dt else datetime.now(),
-            "score": paper.score,
-            "alphaxiv_rank": paper.alphaxiv_rank,
-            "hf_rank": paper.hf_rank,
-            "average_rank": paper.average_rank,
-        })
+        rows.append(
+            {
+                "arxiv": paper.arxiv_id,
+                "title": paper.title,
+                "abstract": paper.abstract,
+                "published_on": published_dt if published_dt else datetime.now(),
+                "score": paper.score,
+                "alphaxiv_rank": paper.alphaxiv_rank,
+                "hf_rank": paper.hf_rank,
+                "average_rank": paper.average_rank,
+            }
+        )
 
     return pd.DataFrame(rows)
 
 
-def get_all_abstracts(after: datetime, before: datetime) -> pd.DataFrame:
+def get_all_abstracts(after: datetime, before: datetime) -> tuple[pd.DataFrame, int]:
     if after >= before:
         logger.info("Invalid time window, returning empty DataFrame")
-        return pd.DataFrame()
+        return pd.DataFrame(), 0
 
-    alphaxiv_papers = fetch_alphaxiv_papers(days=7, max_papers=ALPHAXIV_MAX_PAPERS, top_percentile=ALPHAXIV_TOP_PERCENTILE)
+    alphaxiv_papers, alphaxiv_count_before_percentile = fetch_alphaxiv_papers(
+        days=7,
+        max_papers=ALPHAXIV_MAX_PAPERS,
+        top_percentile=ALPHAXIV_TOP_PERCENTILE,
+        after=after,
+        before=before,
+    )
     hf_papers = fetch_hf_papers_date_range(days=7)
 
     scored_papers = _merge_and_score_papers(alphaxiv_papers, hf_papers)
 
     if not scored_papers:
         logger.info("No papers found in time window")
-        return pd.DataFrame()
+        return pd.DataFrame(), 0
 
     filtered_papers = _filter_by_date_range(scored_papers, after, before)
 
     if not filtered_papers:
         logger.info("No papers in time window after date filtering")
-        return pd.DataFrame()
+        return pd.DataFrame(), alphaxiv_count_before_percentile
 
     df = _papers_to_dataframe(filtered_papers)
 
@@ -334,10 +371,11 @@ def get_all_abstracts(after: datetime, before: datetime) -> pd.DataFrame:
         extra={
             "score_2": len(df[df["score"] == 2]),
             "score_1": len(df[df["score"] == 1]),
+            "alphaxiv_count_before_percentile": alphaxiv_count_before_percentile,
         },
     )
 
-    return df
+    return df, alphaxiv_count_before_percentile
 
 
 def get_url(arxiv_id: str) -> str:
