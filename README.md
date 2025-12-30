@@ -1,13 +1,11 @@
 # <img src="https://user-images.githubusercontent.com/5917371/231673318-afd0253d-a31a-4265-a44d-5334ed872408.png" width="50"> arxiv-sanity-bot
 
 [![Run Arxiv Sanity Bot](https://github.com/giacomov/arxiv-sanity-bot/actions/workflows/run-arxiv-sanity-bot.yml/badge.svg)](https://github.com/giacomov/arxiv-sanity-bot/actions/workflows/run-arxiv-sanity-bot.yml)
-[![Maintainability](https://api.codeclimate.com/v1/badges/bf7a3c98c285aa95f935/maintainability)](https://codeclimate.com/github/giacomov/arxiv-sanity-bot/maintainability)
-
-![Slide 2 (2)](https://user-images.githubusercontent.com/5917371/233284690-2a548958-4212-4e39-963d-ad6ae967b4b8.jpeg)
+[![Maintainability](https://qlty.sh/gh/giacomov/projects/arxiv-sanity-bot/maintainability.svg)](https://qlty.sh/gh/giacomov/projects/arxiv-sanity-bot)
 
 This repository contains the code for `arxiv-sanity-bot`, a system that:
 
-1. ranks the most recent AI/ML papers by combining [alphaXiv](https://alphaxiv.org) trending feed and [HuggingFace](https://huggingface.co) daily papers
+1. ranks the most recent AI/ML papers by combining multiple sources (as of today, AlphaXiv and Huggingface Papers)
 2. selects top-ranked papers (papers appearing in both sources get priority)
 3. sends them to OpenAI for summarization using the [OpenAI API](https://platform.openai.com/docs/introduction)
 4. Extract the first image of the paper
@@ -18,7 +16,7 @@ Clicking on the shortened URL in the tweet takes you to the arxiv page.
 
 ## How it works
 
-The code runs periodically as a [Github action](https://github.com/giacomov/arxiv-sanity-bot/blob/main/.github/workflows/run-arxiv-sanity-bot.yml) (so it runs on free compute here on Github). It fetches trending papers from [alphaXiv](https://alphaxiv.org) and daily papers from [HuggingFace](https://huggingface.co), combining them with a scoring system (2 points if a paper appears in both sources, 1 point otherwise). Papers are sorted by score and then by average rank. The top papers are sent to GPT-4o for summarization using the OpenAI API. It then extracts the first image of the paper (if it exists). Each result is concatenated with a shortened version of its Arxiv link and then posted on X/Twitter, with the first image of the paper attached.
+The code runs periodically as a [Github action](https://github.com/giacomov/arxiv-sanity-bot/blob/main/.github/workflows/run-arxiv-sanity-bot.yml) (so it runs on free compute here on Github). It fetches trending papers from [alphaXiv](https://alphaxiv.org) and daily papers from [HuggingFace](https://huggingface.co), combining them with a scoring system (2 points if a paper appears in both sources, 1 point otherwise). Papers are sorted by score and then by average rank. The top papers are sent to OpenAI for summarization using the OpenAI API. It then extracts the first image of the paper (if it exists). Each result is then posted on X/Twitter, with the first image of the paper attached.
 
 
 ### Notes
