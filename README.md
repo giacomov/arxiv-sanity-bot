@@ -1,6 +1,7 @@
 # <img src="https://user-images.githubusercontent.com/5917371/231673318-afd0253d-a31a-4265-a44d-5334ed872408.png" width="50"> arxiv-sanity-bot
 
 [![Run Arxiv Sanity Bot](https://github.com/giacomov/arxiv-sanity-bot/actions/workflows/run-arxiv-sanity-bot.yml/badge.svg)](https://github.com/giacomov/arxiv-sanity-bot/actions/workflows/run-arxiv-sanity-bot.yml)
+[![CI](https://github.com/giacomov/arxiv-sanity-bot/actions/workflows/run_tests.yml/badge.svg)](https://github.com/giacomov/arxiv-sanity-bot/actions/workflows/run_tests.yml)
 [![Maintainability](https://qlty.sh/gh/giacomov/projects/arxiv-sanity-bot/maintainability.svg)](https://qlty.sh/gh/giacomov/projects/arxiv-sanity-bot)
 
 This repository contains the code for `arxiv-sanity-bot`, a system that:
