@@ -1,3 +1,4 @@
+import re
 import random
 import time
 from datetime import datetime, timedelta
@@ -22,19 +23,55 @@ from arxiv_sanity_bot.config import (
     HF_N_RETRIES,
     HF_WAIT_TIME,
 )
-from arxiv_sanity_bot.logger import get_logger
+from arxiv_sanity_bot.logger import get_logger, FatalError
 from arxiv_sanity_bot.schemas import PaperSource, RawPaper, RankedPaper
 
 
 logger = get_logger(__name__)
 
 
+def _sanitize_arxiv_id(arxiv_id: str | None) -> str:
+    """
+    Sanitize arxiv_id by extracting only the valid ID portion.
+
+    Valid format: YYMM.NNNNN or YYMM.NNNN (e.g., 2512.24880)
+
+    Examples:
+    - "2512.24880/sso-callback" -> "2512.24880"
+    - "2512.24880v1" -> "2512.24880"
+
+    Args:
+        arxiv_id: Raw arxiv ID string from API
+
+    Returns:
+        Sanitized arxiv ID
+
+    Raises:
+        FatalError: If arxiv_id doesn't match valid format
+    """
+    if not arxiv_id:
+        raise FatalError("Empty arxiv_id encountered")
+
+    # Match new format: YYMM.NNNNN or YYMM.NNNN
+    match = re.match(r"^(\d{4}\.\d{4,5})", arxiv_id)
+    if match:
+        sanitized = match.group(1)
+        if sanitized != arxiv_id:
+            logger.info(
+                "Sanitized arxiv_id",
+                extra={"original": arxiv_id, "sanitized": sanitized},
+            )
+        return sanitized
+
+    # Invalid format - raise fatal error
+    raise FatalError(f"Invalid arxiv_id format: {arxiv_id}")
+
+
 def _from_alphaxiv(paper: dict[str, Any]) -> RawPaper | None:
-    arxiv_id = _extract_field(
+    arxiv_id_raw = _extract_field(
         paper, ["universal_paper_id", "id"], nested_keys=["paper"]
     )
-    if not arxiv_id:
-        return None
+    arxiv_id = _sanitize_arxiv_id(arxiv_id_raw)
 
     metrics = paper.get("metrics", {})
     votes = metrics.get("public_total_votes", 0)
@@ -52,9 +89,8 @@ def _from_alphaxiv(paper: dict[str, Any]) -> RawPaper | None:
 
 
 def _from_huggingface(paper: dict[str, Any]) -> RawPaper | None:
-    arxiv_id = _extract_field(paper, ["id"], nested_keys=["paper"])
-    if not arxiv_id:
-        return None
+    arxiv_id_raw = _extract_field(paper, ["id"], nested_keys=["paper"])
+    arxiv_id = _sanitize_arxiv_id(arxiv_id_raw)
 
     return RawPaper(
         arxiv_id=arxiv_id,

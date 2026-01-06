@@ -3,8 +3,10 @@ from unittest.mock import patch
 from datetime import datetime
 
 from arxiv_sanity_bot.schemas import RawPaper, RankedPaper, PaperSource
+from arxiv_sanity_bot.logger import FatalError
 from arxiv_sanity_bot.ranking.ranked_papers import (
     _extract_field,
+    _sanitize_arxiv_id,
     _from_alphaxiv,
     _from_huggingface,
     fetch_alphaxiv_papers,
@@ -260,3 +262,43 @@ def test_get_all_abstracts_sorting(
 
 def test_get_url():
     assert get_url("2411.12345") == "https://arxiv.org/abs/2411.12345"
+
+
+def test_sanitize_arxiv_id_valid():
+    """Test that valid arxiv IDs are returned unchanged."""
+    assert _sanitize_arxiv_id("2512.24880") == "2512.24880"
+    assert _sanitize_arxiv_id("2411.12345") == "2411.12345"
+    assert _sanitize_arxiv_id("1234.5678") == "1234.5678"
+
+
+def test_sanitize_arxiv_id_with_path():
+    """Test that extraneous path components are stripped."""
+    assert _sanitize_arxiv_id("2512.24880/sso-callback") == "2512.24880"
+    assert _sanitize_arxiv_id("2411.12345/foo/bar") == "2411.12345"
+
+
+def test_sanitize_arxiv_id_with_version():
+    """Test that version suffixes are stripped."""
+    assert _sanitize_arxiv_id("2512.24880v1") == "2512.24880"
+    assert _sanitize_arxiv_id("2411.12345v10") == "2411.12345"
+
+
+def test_sanitize_arxiv_id_invalid_format():
+    """Test that invalid formats raise FatalError."""
+    with pytest.raises(FatalError, match="Invalid arxiv_id format"):
+        _sanitize_arxiv_id("invalid-format")
+
+    with pytest.raises(FatalError, match="Invalid arxiv_id format"):
+        _sanitize_arxiv_id("123.456")  # Too short
+
+    with pytest.raises(FatalError, match="Invalid arxiv_id format"):
+        _sanitize_arxiv_id("abcd.efgh")  # Not numeric
+
+
+def test_sanitize_arxiv_id_empty():
+    """Test that empty or None values raise FatalError."""
+    with pytest.raises(FatalError, match="Empty arxiv_id"):
+        _sanitize_arxiv_id("")
+
+    with pytest.raises(FatalError, match="Empty arxiv_id"):
+        _sanitize_arxiv_id(None)
