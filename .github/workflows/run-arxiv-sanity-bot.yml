@@ -2,7 +2,7 @@ name: Run Arxiv Sanity Bot
 
 on:
   schedule:
-    - cron: "1 30 * * *"
+    - cron: "30 16 * * *"
   workflow_dispatch:
     inputs:
       window_start:
