@@ -153,15 +153,15 @@ def _fetch_alphaxiv_page(
         data = response.json()
         raw_papers = data.get("papers", [])
 
-        parsed =  [p for p in (_from_alphaxiv(raw) for raw in raw_papers) if p]
+        parsed = [p for p in (_from_alphaxiv(raw) for raw in raw_papers) if p]
 
         # Remove papers that could not be parsed
-        # (sometimes alphaxiv contains things that are not papers, like research 
+        # (sometimes alphaxiv contains things that are not papers, like research
         # agendas)
         parsed_clean = [p for p in parsed if p is not None]
 
         return parsed_clean
-        
+
     except requests.exceptions.RequestException as e:
         logger.error(
             "Failed to fetch from alphaXiv API",
