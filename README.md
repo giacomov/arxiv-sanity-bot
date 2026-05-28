@@ -23,7 +23,7 @@ The code runs periodically as a [Github action](https://github.com/giacomov/arxi
 ### Notes
 
 * The icon for the bot was generated using Stable Diffusion
-* The bot considers papers within a time window going back a few days to ensure adequate trending signal
+* The bot considers papers within a time window going back a few days to ensure adequate trending signal, and avoids duplication by keeping track of the papers already summarized
 * The bot avoids reposting the same paper multiple times by maintaining track of the posted tweets, exploiting a Firebase database (free quota).
 * All parameters governing the functioning of the bot are contained in the [config.py](https://github.com/giacomov/arxiv-sanity-bot/blob/main/arxiv_sanity_bot/config.py) module.
 * **Note:** The bot previously used Altmetric scores, which was deprecated in 2024 when their API closed. The current ranking system uses alphaXiv + HuggingFace.
