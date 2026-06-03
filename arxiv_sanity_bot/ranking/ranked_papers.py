@@ -291,6 +291,10 @@ def fetch_hf_papers_date_range(days: int = 7) -> list[RawPaper]:
                 extra={"exception": str(e)},
             )
             continue
+        
+        logger.info(f"Waiting 10s before next HF API call...")
+        
+        time.sleep(20)
 
     logger.info(f"Total HuggingFace papers fetched: {len(all_papers)}")
     return all_papers
