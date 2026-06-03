@@ -6,6 +6,7 @@ import pypdf  # type: ignore
 import pypdf.errors  # type: ignore
 import pypdf.filters  # type: ignore
 from PIL import Image
+import tenacity
 
 from arxiv_sanity_bot.arxiv.extract_graph import extract_graph
 from arxiv_sanity_bot.arxiv.image_validation import has_image_content
@@ -193,19 +194,14 @@ def _save_first_image(arxiv_id: str, page: Any) -> str | None:
     return None
 
 
-def download_paper(arxiv_id: str) -> str | None:
+@tenacity.retry(
+    wait=tenacity.wait_exponential(multiplier=1, min=2, max=120),
+    stop=tenacity.stop_after_attempt(ARXIV_NUM_RETRIES),
+    reraise=True,
+)
+def download_paper(arxiv_id: str) -> str:
     search = arxiv.Search(id_list=[arxiv_id])
     paper = next(search.results())
     logger.info(f"Downloading paper {arxiv_id}")
-
-    filename: str | None = None
-    for _ in range(ARXIV_NUM_RETRIES):
-        try:
-            filename = paper.download_pdf()
-        except Exception:
-            continue
-        else:
-            logger.info(f"Downloaded pdf for {arxiv_id}")
-            break
-
-    return filename
+    
+    return paper.download_pdf()
