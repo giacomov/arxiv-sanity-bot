@@ -203,5 +203,5 @@ def download_paper(arxiv_id: str) -> str:
     search = arxiv.Search(id_list=[arxiv_id])
     paper = next(search.results())
     logger.info(f"Downloading paper {arxiv_id}")
-    
+
     return paper.download_pdf()
