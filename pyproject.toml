@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "A bot that reads papers from arxiv-sanity, summarizes them using ChatGPT and post them on Twitter"
 readme = "README.md"
 authors = [{"name" = "Giacomo Vianello"}]
-requires-python = ">=3.12"
+requires-python = "==3.13.*"
 dependencies = [
     "openai",
     "tweepy",
@@ -21,8 +21,8 @@ dependencies = [
     "numpy",
     "python-dotenv",
     "tenacity",
-    "pydantic",
-    ]
+    "pydantic"
+]
 
 [build-system]
 requires = ["setuptools", "wheel"]
@@ -36,10 +36,6 @@ dev = [
     "types-requests>=2.32.4.20250913",
     "black>=24.0.0",
     "pre-commit>=3.0.0",
-]
-
-[project.optional-dependencies]
-test = [
     "pytest",
     "coverage",
     "pytest-asyncio",
@@ -56,3 +52,5 @@ test = [
 [project.scripts]
 arxiv-sanity-bot = "arxiv_sanity_bot.cli.arxiv_sanity_bot:bot"
 
+[tool.uv]
+   python-preference = "only-managed"
