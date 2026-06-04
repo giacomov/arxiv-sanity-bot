@@ -11,6 +11,23 @@ import dotenv
 
 dotenv.load_dotenv()
 
+# Opt-in: disable SSL verification (e.g. behind a corp proxy with TLS interception).
+# Set ARXIV_SANITY_BOT_INSECURE_SSL=1 in your local .env. Never enable in CI/prod.
+import os  # noqa: E402
+
+if os.environ.get("ARXIV_SANITY_BOT_INSECURE_SSL") == "1":
+    import requests  # noqa: E402
+    import urllib3  # noqa: E402
+
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    _orig_request = requests.Session.request
+
+    def _no_verify_request(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        kwargs["verify"] = False
+        return _orig_request(self, *args, **kwargs)
+
+    requests.Session.request = _no_verify_request  # type: ignore[method-assign]
+
 from arxiv_sanity_bot.arxiv import arxiv_abstracts  # noqa: E402
 from arxiv_sanity_bot.ranking import ranked_papers  # noqa: E402
 from arxiv_sanity_bot.arxiv.extract_image import extract_first_image  # noqa: E402
