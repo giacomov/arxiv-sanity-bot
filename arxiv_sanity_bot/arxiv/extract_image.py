@@ -9,7 +9,7 @@ from PIL import Image
 import tenacity
 
 from arxiv_sanity_bot.arxiv.extract_graph import extract_graph
-from arxiv_sanity_bot.arxiv.image_validation import has_image_content
+from arxiv_sanity_bot.arxiv.image_validation import has_image_content, is_uploadable
 from arxiv_sanity_bot.config import ARXIV_NUM_RETRIES
 from arxiv_sanity_bot.logger import get_logger
 
@@ -51,7 +51,17 @@ def extract_first_image(arxiv_id: str, pdf_path: str | None = None) -> str | Non
 
     if filename is not None:
         new_filename = f"{arxiv_id}_image1.jpg"
-        _convert_to_jpeg(filename, new_filename)
+        try:
+            _convert_to_jpeg(filename, new_filename)
+        except Exception as e:
+            logger.info(
+                f"Failed to convert image for {arxiv_id}: {type(e).__name__}: {e}"
+            )
+            return None
+        if not is_uploadable(new_filename):
+            logger.info(f"Image for {arxiv_id} rejected by upload validator")
+            os.remove(new_filename)
+            return None
         return new_filename
 
     else:
