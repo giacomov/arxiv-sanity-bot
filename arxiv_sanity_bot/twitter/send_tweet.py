@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 import tweepy  # type: ignore
 from tenacity import (
@@ -5,6 +6,7 @@ from tenacity import (
     stop_after_attempt,
     wait_fixed,
     retry_if_exception_type,
+    before_sleep_log,
 )
 
 from arxiv_sanity_bot.config import TWITTER_N_TRIALS, TWITTER_SLEEP_TIME
@@ -19,6 +21,7 @@ logger = get_logger(__name__)
     retry=retry_if_exception_type(tweepy.errors.TweepyException),
     stop=stop_after_attempt(TWITTER_N_TRIALS),
     wait=wait_fixed(TWITTER_SLEEP_TIME),
+    before_sleep=before_sleep_log(logger, logging.WARNING, exc_info=True),
     reraise=True,
 )
 def _create_tweet(
@@ -43,6 +46,7 @@ def _create_tweet(
     retry=retry_if_exception_type(tweepy.errors.TweepyException),
     stop=stop_after_attempt(TWITTER_N_TRIALS),
     wait=wait_fixed(TWITTER_SLEEP_TIME),
+    before_sleep=before_sleep_log(logger, logging.WARNING, exc_info=True),
     reraise=True,
 )
 def _upload_image_with_retry(api: tweepy.API, img_path: str) -> Any:
