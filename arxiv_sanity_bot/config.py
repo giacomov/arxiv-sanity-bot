@@ -19,7 +19,7 @@ ARXIV_QUERY = (
 # It is suggested to use 3 seconds in the API terms of service
 ARXIV_DELAY = 3  # seconds
 # Number of times to retry a failed page fetch
-ARXIV_NUM_RETRIES = 50
+ARXIV_NUM_RETRIES = 10
 # Paging settings
 ARXIV_PAGE_SIZE = 100  # papers
 ARXIV_MAX_PAGES = 10

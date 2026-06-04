@@ -204,9 +204,26 @@ def _save_first_image(arxiv_id: str, page: Any) -> str | None:
     return None
 
 
+def _log_arxiv_retry(retry_state: tenacity.RetryCallState) -> None:
+    exc = retry_state.outcome.exception() if retry_state.outcome else None
+    sleep_for = getattr(retry_state.next_action, "sleep", None)
+    logger.warning(
+        f"arxiv download attempt {retry_state.attempt_number} failed "
+        f"({type(exc).__name__ if exc else 'unknown'}); retrying in {sleep_for:.1f}s",
+        extra={
+            "attempt": retry_state.attempt_number,
+            "max_attempts": ARXIV_NUM_RETRIES,
+            "exception_type": type(exc).__name__ if exc else None,
+            "exception": str(exc) if exc else None,
+            "sleep_seconds": sleep_for,
+        },
+    )
+
+
 @tenacity.retry(
     wait=tenacity.wait_exponential(multiplier=1, min=2, max=120),
     stop=tenacity.stop_after_attempt(ARXIV_NUM_RETRIES),
+    before_sleep=_log_arxiv_retry,
     reraise=True,
 )
 def download_paper(arxiv_id: str) -> str:
