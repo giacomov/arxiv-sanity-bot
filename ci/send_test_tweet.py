@@ -13,6 +13,7 @@ import tempfile
 from pathlib import Path
 
 import dotenv
+from PIL import Image, ImageDraw
 
 dotenv.load_dotenv()
 
@@ -20,13 +21,13 @@ from arxiv_sanity_bot.twitter.auth import TwitterOAuth1  # noqa: E402
 from arxiv_sanity_bot.twitter.send_tweet import send_tweet  # noqa: E402
 
 
-# Minimal 1x1 transparent PNG — enough to exercise the upload.twitter.com path
-# without committing a real image to the repo.
-_TINY_PNG = bytes.fromhex(
-    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4"
-    "890000000d49444154789c63f8ffff3f0005fe02fedccc59e70000000049454e"
-    "44ae426082"
-)
+def _write_placeholder_png(path: str) -> None:
+    # Twitter's media endpoint rejects degenerate (1x1) PNGs as "media type
+    # unrecognized", so generate a real 256x256 image on the fly.
+    img = Image.new("RGB", (256, 256), (30, 30, 60))
+    draw = ImageDraw.Draw(img)
+    draw.text((16, 120), "arxiv-sanity-bot CI", fill=(220, 220, 220))
+    img.save(path, "PNG")
 
 
 def main() -> int:
@@ -43,8 +44,8 @@ def main() -> int:
         return 1
 
     with tempfile.TemporaryDirectory() as tmp:
-        img_path = str(Path(tmp) / "tiny.png")
-        Path(img_path).write_bytes(_TINY_PNG)
+        img_path = str(Path(tmp) / "placeholder.png")
+        _write_placeholder_png(img_path)
 
         text = "arxiv-sanity-bot CI auth check — please ignore"
         print(f"Posting: {text!r} with image {img_path!r} ...")
