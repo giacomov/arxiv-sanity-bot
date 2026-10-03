@@ -1,5 +1,6 @@
 import glob
 import os
+from http.client import HTTPMessage
 from pathlib import Path
 from unittest.mock import patch
 from urllib.error import ContentTooShortError
@@ -106,7 +107,10 @@ def test_extract_first_image_both_bitmap_and_graph(paper_with_both_graph_and_bit
 @pytest.mark.parametrize(
     "download_error",
     [
-        ContentTooShortError("retrieval incomplete: got only 2 out of 33 bytes", b""),
+        ContentTooShortError(
+            "retrieval incomplete: got only 2 out of 33 bytes",
+            ("paper.pdf", HTTPMessage()),
+        ),
         arxiv.HTTPError("https://export.arxiv.org/api/query", 0, 406),
     ],
 )
