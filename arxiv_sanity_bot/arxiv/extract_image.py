@@ -33,16 +33,36 @@ def extract_first_image(arxiv_id: str, pdf_path: str | None = None) -> str | Non
     """
 
     if pdf_path is None:
-        pdf_path = download_paper(arxiv_id)
+        try:
+            pdf_path = download_paper(arxiv_id)
+        except Exception as e:
+            # The image is optional: a paper whose PDF cannot be fetched (arXiv API
+            # errors, truncated downloads, ...) is still worth tweeting without one.
+            logger.error(
+                f"Could not download PDF for {arxiv_id}, tweeting without an image: "
+                f"{type(e).__name__}: {e}",
+                exc_info=True,
+                extra={"arxiv_id": arxiv_id, "error_type": type(e).__name__},
+            )
+            return None
 
     if pdf_path is None:
         return None
 
-    # Find first bitmap (if any)
-    image_file, image_page_number = extract_image(pdf_path, arxiv_id)
+    try:
+        # Find first bitmap (if any)
+        image_file, image_page_number = extract_image(pdf_path, arxiv_id)
 
-    # Find first graph (if any)
-    graph_file, graph_page_number = extract_graph(pdf_path, arxiv_id)
+        # Find first graph (if any)
+        graph_file, graph_page_number = extract_graph(pdf_path, arxiv_id)
+    except Exception as e:
+        logger.error(
+            f"Could not extract an image from the PDF of {arxiv_id}, tweeting "
+            f"without an image: {type(e).__name__}: {e}",
+            exc_info=True,
+            extra={"arxiv_id": arxiv_id, "error_type": type(e).__name__},
+        )
+        return None
 
     # We select whichever comes first.
     filename = _select_image_or_graph(
