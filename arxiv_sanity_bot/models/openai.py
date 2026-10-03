@@ -13,6 +13,40 @@ import openai
 
 logger = get_logger(__name__)
 
+# Error types from the OpenAI API that will not go away by retrying
+# (billing, credentials, bad request, unknown model...).
+_NON_RETRYABLE_ERROR_TYPES = frozenset(
+    {
+        "insufficient_quota",
+        "invalid_api_key",
+        "invalid_request_error",
+    }
+)
+
+
+def _is_non_retryable(error: Exception) -> bool:
+    """
+    Return True if the error returned by the OpenAI API is permanent, i.e. retrying
+    the exact same request will fail again (exhausted credits, invalid key, ...).
+    """
+    if isinstance(
+        error,
+        (
+            openai.AuthenticationError,
+            openai.PermissionDeniedError,
+            openai.BadRequestError,
+            openai.NotFoundError,
+        ),
+    ):
+        return True
+
+    # A 429 is normally a transient rate limit, but an exhausted credit balance is
+    # reported with the same status code and will never recover during a run.
+    if isinstance(error, openai.RateLimitError):
+        return getattr(error, "type", None) in _NON_RETRYABLE_ERROR_TYPES
+
+    return False
+
 
 class OpenAI(LLM):
 
@@ -104,6 +138,17 @@ class OpenAI(LLM):
                     messages=history,
                 )
             except Exception as e:
+                if _is_non_retryable(e):
+                    logger.critical(
+                        "OpenAI API returned a non-retryable error. Check the account "
+                        "billing/credits and the OPENAI_API_KEY secret.",
+                        exc_info=True,
+                        extra={"exception": str(e)},
+                    )
+                    raise FatalError(
+                        f"OpenAI API returned a non-retryable error: {e}"
+                    ) from e
+
                 logger.error(
                     "Could not generate summary sentence",
                     exc_info=True,
