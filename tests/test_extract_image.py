@@ -1,8 +1,11 @@
 import glob
 import os
+from http.client import HTTPMessage
 from pathlib import Path
 from unittest.mock import patch
+from urllib.error import ContentTooShortError
 
+import arxiv
 import numpy as np
 import pytest
 from PIL import Image
@@ -99,6 +102,35 @@ def test_extract_first_image_both_bitmap_and_graph(paper_with_both_graph_and_bit
         check_image_content(
             new_image=image, reference_image_path=get_resource("three_image1.jpg")
         )
+
+
+@pytest.mark.parametrize(
+    "download_error",
+    [
+        ContentTooShortError(
+            "retrieval incomplete: got only 2 out of 33 bytes",
+            ("paper.pdf", HTTPMessage()),
+        ),
+        arxiv.HTTPError("https://export.arxiv.org/api/query", 0, 406),
+    ],
+)
+def test_extract_first_image_download_failure_returns_none(download_error):
+    with patch(
+        "arxiv_sanity_bot.arxiv.extract_image.download_paper",
+        side_effect=download_error,
+    ):
+        assert extract_first_image("four") is None
+
+    assert len(glob.glob("four_*.jpg")) == 0
+
+
+def test_extract_first_image_corrupted_pdf_returns_none(tmp_path):
+    truncated_pdf = tmp_path / "truncated.pdf"
+    truncated_pdf.write_bytes(b"%PDF-1.4\n%garbage")
+
+    assert extract_first_image("five", pdf_path=str(truncated_pdf)) is None
+
+    assert len(glob.glob("five_*.jpg")) == 0
 
 
 def test_select_image_or_graph():
