@@ -134,3 +134,9 @@ dmypy.json
 .idea/
 .virtual_documents/
 firebase_token.json
+
+# Images written to the repo root by tests/test_extract_image.py
+# (reference images live in tests/resources/ and stay tracked)
+/*.png
+/*.jpg
+/*.jpeg
