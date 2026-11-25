@@ -93,7 +93,7 @@ uv run arxiv-sanity-bot --dry
 
 3. **Summarization** (`models/openai.py`):
    - Calls OpenAI API with iterative refinement loop
-   - Model is hardcoded in `models/openai.py` (currently "gpt-5-mini")
+   - Model is hardcoded in `models/openai.py` (currently "gpt-6-luna")
    - Ensures summaries fit tweet length constraints
    - Retries with feedback if summary too long
 
