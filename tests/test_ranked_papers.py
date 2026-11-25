@@ -1,3 +1,4 @@
+from freezegun import freeze_time
 import pytest
 from unittest.mock import patch
 from datetime import datetime
@@ -154,9 +155,14 @@ def test_fetch_alphaxiv_papers(mock_fetch_page, raw_paper):
 def test_fetch_hf_papers_date_range(mock_sleep, mock_fetch, raw_paper):
     mock_fetch.return_value = [raw_paper(arxiv_id="2411.67890")]
 
-    papers = fetch_hf_papers_date_range(days=2)
+    with freeze_time("2026-11-25 01:00:00"):
+        papers = fetch_hf_papers_date_range(days=2)
 
-    assert mock_fetch.call_count == 2
+    # Today's (unpublished) date is never requested
+    assert [c.args[0] for c in mock_fetch.call_args_list] == [
+        "2026-11-24",
+        "2026-11-23",
+    ]
     assert len(papers) == 2
 
 
@@ -302,3 +308,42 @@ def test_sanitize_arxiv_id_empty():
 
     with pytest.raises(FatalError, match="Empty arxiv_id"):
         _sanitize_arxiv_id(None)
+
+
+def _mock_response(status_code, json_data=None, text=""):
+    import requests
+
+    resp = requests.Response()
+    resp.status_code = status_code
+    resp._content = (
+        __import__("json").dumps(json_data).encode()
+        if json_data is not None
+        else text.encode()
+    )
+    resp.url = "https://huggingface.co/api/daily_papers"
+    return resp
+
+
+@patch("arxiv_sanity_bot.ranking.ranked_papers.time.sleep")
+@patch("arxiv_sanity_bot.ranking.ranked_papers.requests.get")
+def test_fetch_hf_papers_400_is_skipped_without_retry(mock_get, mock_sleep):
+    ok = [
+        {
+            "paper": {
+                "id": "2411.67890",
+                "title": "T",
+                "summary": "S",
+                "publishedAt": "2026-11-24T00:00:00.000Z",
+            }
+        }
+    ]
+    # First date -> 400, second date -> OK
+    mock_get.side_effect = [
+        _mock_response(400, text='{"error":"Bad Request"}'),
+        _mock_response(200, ok),
+    ]
+
+    papers = fetch_hf_papers_date_range(days=2)
+
+    assert mock_get.call_count == 2  # the 400 was not retried
+    assert [p.arxiv_id for p in papers] == ["2411.67890"]

@@ -1,7 +1,7 @@
 import re
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import numpy as np
@@ -245,45 +245,82 @@ def fetch_alphaxiv_papers(
     return filtered_papers[:max_papers], count_before_percentile
 
 
+class HuggingFaceClientError(Exception):
+    """Non-retryable 4xx response from the HF API (e.g. 400 for a date whose
+    daily papers list has not been published yet)."""
+
+
+_HF_DAILY_PAPERS_URL = "https://huggingface.co/api/daily_papers"
+
+
 @retry(
     retry=retry_if_exception_type(HuggingFaceAPIError),
     stop=stop_after_attempt(HF_N_RETRIES),
     wait=wait_exponential(multiplier=1, min=1, max=HF_WAIT_TIME),
     reraise=True,
 )
-def _fetch_hf_papers_for_date(date_str: str) -> list[RawPaper]:
-    url = f"https://huggingface.co/api/daily_papers?date={date_str}"
-
+def _fetch_hf_papers(params: dict[str, Any]) -> list[RawPaper]:
     try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        raw_papers = response.json()
-
-        return [p for p in (_from_huggingface(raw) for raw in raw_papers) if p]
+        response = requests.get(_HF_DAILY_PAPERS_URL, params=params, timeout=30)
     except requests.exceptions.RequestException as e:
         logger.error(
-            f"Failed to fetch HF papers for {date_str}",
+            f"Failed to fetch HF papers ({params})",
             exc_info=True,
             extra={"exception": str(e)},
         )
         raise HuggingFaceAPIError(str(e))
 
+    status = response.status_code
+    if 400 <= status < 500 and status != 429:
+        # Client errors are deterministic: retrying will not help
+        raise HuggingFaceClientError(
+            f"HF API returned {status} for {params}: {response.text[:200]}"
+        )
+
+    try:
+        response.raise_for_status()
+        raw_papers = response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(
+            f"Failed to fetch HF papers ({params})",
+            exc_info=True,
+            extra={"exception": str(e)},
+        )
+        raise HuggingFaceAPIError(str(e))
+
+    if isinstance(raw_papers, dict):
+        raw_papers = raw_papers.get("papers", [])
+
+    parsed = []
+    for raw in raw_papers:
+        try:
+            parsed.append(_from_huggingface(raw))
+        except (FatalError, ValueError) as e:
+            # Invalid arxiv id or fields failing validation: skip this entry
+            logger.info("Skipping invalid HF entry", extra={"exception": str(e)})
+    return [p for p in parsed if p]
+
+
+def _fetch_hf_papers_for_date(date_str: str) -> list[RawPaper]:
+    return _fetch_hf_papers({"date": date_str})
+
 
 def fetch_hf_papers_date_range(days: int = 7) -> list[RawPaper]:
-    all_papers = []
-    today = datetime.now()
+    all_papers: list[RawPaper] = []
+    # HF keys daily papers by UTC date
+    today = datetime.now(timezone.utc)
 
     logger.info(f"Fetching HuggingFace papers (last {days} days)")
 
-    for i in range(days):
+    # Start from yesterday: today's list is usually not published yet when the
+    # bot runs, and HF rejects such dates with 400 Bad Request
+    for i in range(1, days + 1):
         date = (today - timedelta(days=i)).strftime("%Y-%m-%d")
         try:
             papers = _fetch_hf_papers_for_date(date)
-            all_papers.extend(papers)
-            logger.info(f"Fetched {len(papers)} papers from HF for {date}")
-
-            delay = random.randint(1, 3)
-            time.sleep(delay)
+        except HuggingFaceClientError as e:
+            logger.info(f"No HF papers available for {date}: {e}")
+            continue
         except HuggingFaceAPIError as e:
             logger.error(
                 f"Could not fetch HF papers for {date}, continuing",
@@ -292,9 +329,10 @@ def fetch_hf_papers_date_range(days: int = 7) -> list[RawPaper]:
             )
             continue
 
-        logger.info("Waiting 10s before next HF API call...")
-
-        time.sleep(20)
+        all_papers.extend(papers)
+        logger.info(f"Fetched {len(papers)} papers from HF for {date}")
+        # Pace requests to avoid HF rate limiting
+        time.sleep(20 + random.randint(1, 3))
 
     logger.info(f"Total HuggingFace papers fetched: {len(all_papers)}")
     return all_papers

@@ -134,7 +134,7 @@ class OpenAI(LLM):
                 logger.debug("Calling OpenAI API", extra={"history": history})
 
                 completion = self._client.chat.completions.create(
-                    model="gpt-5-mini",
+                    model="gpt-6-luna",
                     messages=history,
                 )
             except Exception as e:
